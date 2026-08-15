@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# 日志与临时文件
+*.log
+*.pkl
+*.json.tmp
+
+# rqalpha 数据 bundle（3.3G，可重新下载，不入库）
+bundle/
+.rqalpha/
