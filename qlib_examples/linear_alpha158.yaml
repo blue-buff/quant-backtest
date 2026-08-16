@@ -1,0 +1,75 @@
+experiment_name: linear_workflow2
+benchmark: SH000300
+data_handler_config: &id001
+  end_time: 2026-08-14
+  fit_end_time: 2024-06-30
+  fit_start_time: 2023-01-01
+  instruments: csi300
+  start_time: 2023-01-01
+market: csi300
+model:
+  class: LinearModel
+  module_path: qlib.contrib.model.linear
+  kwargs:
+    fit_intercept: true
+port_analysis_config: &id002
+  backtest:
+    account: 100000000
+    benchmark: SH000300
+    end_time: 2026-08-13
+    exchange_kwargs:
+      close_cost: 0.0015
+      deal_price: close
+      limit_threshold: 0.095
+      min_cost: 5
+      open_cost: 0.0005
+    start_time: 2025-01-01
+  strategy:
+    class: TopkDropoutStrategy
+    kwargs:
+      n_drop: 5
+      signal: <PRED>
+      topk: 50
+    module_path: qlib.contrib.strategy
+qlib_init:
+  provider_uri: ~/.qlib/qlib_data/cn_data
+  region: cn
+task:
+  dataset:
+    class: DatasetH
+    kwargs:
+      handler:
+        class: Alpha158
+        kwargs: *id001
+        module_path: qlib.contrib.data.handler
+      segments:
+        test:
+        - 2025-01-01
+        - 2026-08-14
+        train:
+        - 2023-01-01
+        - 2024-06-30
+        valid:
+        - 2024-07-01
+        - 2024-12-31
+    module_path: qlib.data.dataset
+  model:
+    class: LinearModel
+    module_path: qlib.contrib.model.linear
+    kwargs:
+      fit_intercept: true
+  record:
+  - class: SignalRecord
+    kwargs:
+      dataset: <DATASET>
+      model: <MODEL>
+    module_path: qlib.workflow.record_temp
+  - class: SigAnaRecord
+    kwargs:
+      ana_long_short: false
+      ann_scaler: 252
+    module_path: qlib.workflow.record_temp
+  - class: PortAnaRecord
+    kwargs:
+      config: *id002
+    module_path: qlib.workflow.record_temp

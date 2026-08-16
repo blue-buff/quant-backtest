@@ -18,7 +18,7 @@ port_analysis_config: &port_analysis_config
             topk: 50
             n_drop: 5
     backtest:
-        start_time: 2026-01-01
+        start_time: 2025-01-01
         end_time: 2026-08-13
         account: 100000000
         benchmark: *benchmark
@@ -53,7 +53,7 @@ task:
             segments:
                 train: [2023-01-01, 2024-06-30]
                 valid: [2024-07-01, 2024-12-31]
-                test: [2026-01-01, 2026-08-13]
+                test: [2025-01-01, 2026-08-14]
     record: 
         - class: SignalRecord
           module_path: qlib.workflow.record_temp
