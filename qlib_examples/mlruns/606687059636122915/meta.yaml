@@ -1,0 +1,9 @@
+artifact_location: file:///root/quant/qlib_examples/mlruns/606687059636122915
+creation_time: 1786881916539
+effective_trace_archival_retention: null
+experiment_id: '606687059636122915'
+last_update_time: 1786881916539
+lifecycle_stage: active
+name: workflow
+trace_location: null
+workspace: default

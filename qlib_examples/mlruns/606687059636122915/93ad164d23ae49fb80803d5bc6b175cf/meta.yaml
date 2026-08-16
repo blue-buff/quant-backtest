@@ -1,0 +1,14 @@
+artifact_uri: file:///root/quant/qlib_examples/mlruns/606687059636122915/93ad164d23ae49fb80803d5bc6b175cf/artifacts
+end_time: 1786882688211
+entry_point_name: ''
+experiment_id: '606687059636122915'
+lifecycle_stage: active
+run_id: 93ad164d23ae49fb80803d5bc6b175cf
+run_name: mlflow_recorder
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1786882630977
+status: 3
+tags: []
+user_id: root
