@@ -54,7 +54,7 @@ quant/
 - Python 3.12
 - `pip install -r requirements.txt`
 - rqalpha 需下载行情库：`rqalpha download-bundle`（或将已有 bundle 指向 `data_bundle_path`）
-- 脚本默认路径为容器内 `/root/quant`、`/root/.qlib`、`/root/.rqalpha`，本地运行请按实际路径修改
+- 路径统一由 `config.py` 管理（自动基于项目根推导，rqalpha 行情库路径可用环境变量 `RQALPHA_BUNDLE` 覆盖），无需修改代码
 
 ## 完整复现步骤（ML 因子选股）
 

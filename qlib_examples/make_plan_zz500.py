@@ -1,8 +1,12 @@
 """从 qlib pred.pkl 提取每月 top50 调仓计划，转为 rqalpha 可读格式"""
 import pickle, glob, os
+import sys
 import pandas as pd
 
-files = sorted(glob.glob("/root/quant/qlib_examples/mlruns/*/*/artifacts/pred.pkl"),
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import MLRUNS_DIR, PLAN_FILE_ZZ500
+
+files = sorted(glob.glob(f"{MLRUNS_DIR}/*/*/artifacts/pred.pkl"),
                key=os.path.getmtime)
 pred_path = files[-1]
 print("使用:", pred_path)
@@ -29,6 +33,6 @@ for dt, row in monthly.iterrows():
     plan_rows.append([dt.strftime("%Y-%m-%d")] + [to_rqalpha(s) for s in top50])
 
 plan = pd.DataFrame(plan_rows)
-plan.to_csv("/root/quant/qlib_examples/rebalance_plan_zz500.csv", index=False, header=False)
+plan.to_csv(PLAN_FILE_ZZ500, index=False, header=False)
 print(f"调仓计划: {len(plan)} 个月, 每月 {len(plan.columns) - 1} 只")
 print(plan.iloc[0].head().to_string())

@@ -1,12 +1,16 @@
 """rqalpha 真实规则回测：按 qlib LightGBM 每月 top50 调仓计划执行
 真实规则: T+1 / 涨跌停 / 印花税 / 100股整数倍 / 佣金，由 rqalpha 撮合处理
 """
+import sys, os
 import pandas as pd
 from rqalpha.apis import *
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import PLAN_FILE_ZZ500
+
 
 def init(context):
-    df = pd.read_csv("/root/quant/qlib_examples/rebalance_plan_zz500.csv", header=None)
+    df = pd.read_csv(PLAN_FILE_ZZ500, header=None)
     context.plan = {
         str(row[0]): [s for s in row[1:] if isinstance(s, str) and s]
         for _, row in df.iterrows()

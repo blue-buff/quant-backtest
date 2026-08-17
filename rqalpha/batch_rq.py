@@ -1,8 +1,12 @@
 """rqalpha 多股票批量回测：5/20 双均线 × 6 只 A股（真实规则：T+1/涨跌停/印花税/100股整数倍）"""
 import warnings
+import sys, os
 warnings.filterwarnings("ignore")
 import pandas as pd
 from rqalpha import run
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import BUNDLE_PATH
 
 STOCKS = [
     ("600519.XSHG", "贵州茅台"),
@@ -39,7 +43,7 @@ def handle_bar(context, bar_dict):
 def run_one(symbol):
     config = {
         "base": {
-            "data_bundle_path": "/root/.rqalpha/bundle",
+            "data_bundle_path": BUNDLE_PATH,
             "start_date": "2023-01-01",
             "end_date": "2026-08-15",
             "accounts": {"stock": 1000000},

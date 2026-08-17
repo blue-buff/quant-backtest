@@ -1,17 +1,21 @@
 """用 Python API 跑 rqalpha 回测，直接拿结果字典"""
 import warnings
+import sys, os
 warnings.filterwarnings("ignore")
 from rqalpha import run
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import BUNDLE_PATH, RQALPHA_STRATEGY_FILE
+
 config = {
     "base": {
-        "data_bundle_path": "/root/.rqalpha/bundle",
+        "data_bundle_path": BUNDLE_PATH,
         "start_date": "2023-01-01",
         "end_date": "2026-08-15",
         "accounts": {"stock": 1000000},
         "frequency": "1d",
         "run_type": "b",
-        "strategy_file": "/root/quant/rqalpha/strategy.py",
+        "strategy_file": RQALPHA_STRATEGY_FILE,
     },
     "extra": {"log_level": "error"},
     "mod": {

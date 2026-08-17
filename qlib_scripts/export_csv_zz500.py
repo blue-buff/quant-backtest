@@ -1,9 +1,13 @@
 """baostock 导出中证500 日线为 qlib dump 格式 CSV（前复权，2023-2026）"""
+import sys
 import os
 import pandas as pd
 import baostock as bs
 
-OUT = "/root/quant/qlib_data_src_zz500"
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import DATA_SRC_ZZ500_DIR
+
+OUT = DATA_SRC_ZZ500_DIR
 os.makedirs(OUT, exist_ok=True)
 START, END = "2023-01-01", "2026-08-15"
 

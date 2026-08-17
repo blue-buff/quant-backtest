@@ -1,17 +1,21 @@
 """rqalpha 跑 qlib 选股计划（真实规则版）"""
 import warnings
+import sys, os
 warnings.filterwarnings("ignore")
 from rqalpha import run
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import BUNDLE_PATH, STRATEGY_FILE_ZZ500
+
 config = {
     "base": {
-        "data_bundle_path": "/root/.rqalpha/bundle",
+        "data_bundle_path": BUNDLE_PATH,
         "start_date": "2025-01-01",
         "end_date": "2026-08-14",
         "accounts": {"stock": 1000000},
         "frequency": "1d",
         "run_type": "b",
-        "strategy_file": "/root/quant/qlib_examples/rq_strategy_qlib_zz500.py",
+        "strategy_file": STRATEGY_FILE_ZZ500,
     },
     "extra": {"log_level": "error"},
     "mod": {"sys_progress": {"enabled": False}, "sys_analyser": {"enabled": True}},
