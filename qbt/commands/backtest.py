@@ -1,4 +1,5 @@
 """qbt backtest: rqalpha 真实规则回测（T+1/涨跌停/印花税/100股整数倍）"""
+import os
 import warnings
 from datetime import datetime
 
@@ -15,6 +16,7 @@ def backtest(
     start: str = typer.Option(None, help="回测开始日期（默认取配置）"),
     end: str = typer.Option(None, help="回测结束日期（默认取配置）"),
     bundle: str = typer.Option(None, help="rqalpha 行情库路径"),
+    pool: str = typer.Option("hs300", help="股票池: hs300 / zz500（决定策略与计划文件）"),
 ) -> None:
     """按调仓计划跑真实规则回测（先跑 qbt train + qbt plan）"""
     cfg = load_config()
@@ -24,11 +26,14 @@ def backtest(
     end = end or cfg["backtest"]["end"]
     bundle = bundle or cfg.get("backtest", {}).get("bundle_path", "/root/.rqalpha/bundle")
 
-    plan_file = root / cfg["plan"]["out"]
+    plan_name = cfg["plan"]["out"] if pool == "hs300" else "qlib_examples/rebalance_plan_zz500.csv"
+    strategy_name = cfg["backtest"]["strategy"] if pool == "hs300" \
+        else "qlib_examples/rq_strategy_qlib_zz500.py"
+    plan_file = root / plan_name
     if not plan_file.exists():
-        typer.secho(f"调仓计划不存在: {plan_file}，先跑 qbt plan", fg="red")
+        typer.secho(f"调仓计划不存在: {plan_file}，先跑 qbt plan --pool {pool}", fg="red")
         raise typer.Exit(1)
-    strategy = root / cfg["backtest"]["strategy"]
+    strategy = root / strategy_name
     if not strategy.exists():
         typer.secho(f"策略文件不存在: {strategy}", fg="red")
         raise typer.Exit(1)
@@ -38,6 +43,9 @@ def backtest(
     except ImportError:
         typer.secho("缺少 rqalpha，请先 pip install rqalpha 并配置行情库", fg="red")
         raise typer.Exit(1)
+
+    # rqalpha 用 exec 加载策略文件，plan 路径经环境变量传入
+    os.environ["QBT_PLAN_FILE"] = str(plan_file)
 
     config = {
         "base": {

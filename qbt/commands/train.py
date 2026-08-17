@@ -68,7 +68,7 @@ def train(
     typer.echo(f"训练开始: model={model} pool={pool}（{work_yaml.name}）")
     typer.echo(f"日志: {logf}")
     write_state(train_status="running", train_info=f"{model}/{pool} 训练中")
-    r = subprocess.run([sys.executable, "-m", "qlib.qrun", str(work_yaml)],
+    r = subprocess.run([sys.executable, "-m", "qlib.cli.run", str(work_yaml)],
                        capture_output=True, text=True, env=env, cwd=str(root / "qlib_examples"))
     logf.write_text(r.stdout + r.stderr, encoding="utf-8")
     if r.returncode != 0:
@@ -87,10 +87,12 @@ def train(
     model_used = "linear" if "LinearModel" in txt else ("lgb" if "LGBModel" in txt else "?")
 
     info = (f"{model_used} IC={ic or '?'} ICIR={icir or '?'} | "
-            f"超额年化={exc_ann or '?'}% IR={exc_ir or '?'} MDD={exc_mdd or '?'}")
+            f"超额年化={exc_ann * 100 if exc_ann is not None else '?'}% "
+            f"IR={exc_ir or '?'} MDD={exc_mdd or '?'}")
     typer.secho(f"✅ 训练完成（实际模型: {model_used}）", fg="green")
     typer.echo(f"   IC={ic}  ICIR={icir}")
-    typer.echo(f"   超额(含成本) 年化={exc_ann}  IR={exc_ir}  MDD={exc_mdd}")
+    typer.echo(f"   超额(含成本) 年化={exc_ann * 100 if exc_ann is not None else '?'}%  "
+               f"IR={exc_ir}  MDD={exc_mdd}")
     write_state(train_status="done", train_info=info,
                 train_metrics={"ic": ic, "icir": icir, "excess_ann": exc_ann,
                                "excess_ir": exc_ir, "excess_mdd": exc_mdd,

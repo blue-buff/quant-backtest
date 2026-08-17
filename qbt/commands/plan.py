@@ -21,6 +21,7 @@ def plan(
     topk: int = typer.Option(None, help="每月持仓数量（默认取配置 50）"),
     freq: str = typer.Option(None, help="调仓频率（默认 ME=月末）"),
     out: str = typer.Option(None, help="输出 CSV 路径"),
+    pool: str = typer.Option("hs300", help="股票池: hs300 / zz500（决定默认输出文件）"),
 ) -> None:
     """从最新 pred.pkl 生成每月 top-K 调仓计划"""
     import pandas as pd
@@ -29,7 +30,9 @@ def plan(
     root = project_root()
     topk = topk or cfg["plan"]["topk"]
     freq = freq or cfg["plan"]["freq"]
-    out = out or str(root / cfg["plan"]["out"])
+    if out is None:
+        out = str(root / cfg["plan"]["out"]) if pool == "hs300" \
+            else str(root / "qlib_examples" / "rebalance_plan_zz500.csv")
 
     pred_path = _latest_pred(root)
     typer.echo(f"使用 pred: {pred_path}")

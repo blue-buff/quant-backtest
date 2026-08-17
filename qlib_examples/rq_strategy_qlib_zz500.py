@@ -1,16 +1,16 @@
-"""rqalpha 真实规则回测：按 qlib LightGBM 每月 top50 调仓计划执行
+"""rqalpha 真实规则回测（中证500）：按 qlib 每月 top50 调仓计划执行
 真实规则: T+1 / 涨跌停 / 印花税 / 100股整数倍 / 佣金，由 rqalpha 撮合处理
+
+注意: rqalpha 用 exec 加载本文件，__file__/sys.path 不可靠，plan 路径用环境变量 QBT_PLAN_FILE 传入
 """
-import sys, os
+import os
 import pandas as pd
 from rqalpha.apis import *
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import PLAN_FILE_ZZ500
-
 
 def init(context):
-    df = pd.read_csv(PLAN_FILE_ZZ500, header=None)
+    plan_path = os.environ.get("QBT_PLAN_FILE", "rebalance_plan_zz500.csv")
+    df = pd.read_csv(plan_path, header=None)
     context.plan = {
         str(row[0]): [s for s in row[1:] if isinstance(s, str) and s]
         for _, row in df.iterrows()

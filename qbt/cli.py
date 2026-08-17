@@ -33,8 +33,8 @@ def all(
         ["data", "fetch", "--pool", pool],
         ["data", "dump", "--pool", pool],
         ["train", "--model", model, "--pool", pool],
-        ["plan"],
-        ["backtest"] + (["--capital", str(capital)] if capital else []),
+        ["plan", "--pool", pool],
+        ["backtest", "--pool", pool] + (["--capital", str(capital)] if capital else []),
         ["report"],
     ]
     for i, args in enumerate(steps, 1):
