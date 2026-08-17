@@ -9,6 +9,14 @@ venv/
 *.pkl
 *.json.tmp
 
-# rqalpha 数据 bundle（3.3G，可重新下载，不入库）
+# rqalpha 数据 bundle（3.3G，官方 download-bundle 可重新获取）
 bundle/
 .rqalpha/
+
+# 行情数据源 CSV（由 qlib_scripts/export_csv*.py 重新导出）
+qlib_data_src/
+qlib_data_src_zz500/
+
+# mlflow 实验记录（qrun 运行产物，含预测/模型/指标）
+qlib_examples/mlruns/
+qlib_examples/mlruns_lgb_bak/
