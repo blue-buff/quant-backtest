@@ -52,9 +52,26 @@ quant/
 ## 环境
 
 - Python 3.12
-- `pip install -r requirements.txt`
+- `pip install -r requirements.txt` + `pip install -e .`（安装 qbt CLI，需 typer/rich）
 - rqalpha 需下载行情库：`rqalpha download-bundle`（或将已有 bundle 指向 `data_bundle_path`）
 - 路径统一由 `config.py` 管理（自动基于项目根推导，rqalpha 行情库路径可用环境变量 `RQALPHA_BUNDLE` 覆盖），无需修改代码
+
+## qbt CLI（一键流水线）
+
+```bash
+qbt init                    # 生成 qbt.yaml 配置 + results/ 目录
+qbt data fetch --pool hs300 # baostock 导出成分股日线（--pool hs300/zz500，--limit N 小规模测试）
+qbt data validate           # 交叉校验本地 CSV vs 腾讯行情接口（>0.5% 报警）
+qbt data dump --pool hs300  # CSV → qlib bin 格式（自动生成 universe 文件）
+qbt train --model lgb --pool hs300   # qlib 训练+简化回测（--model lgb/linear）
+qbt plan                    # pred.pkl → 每月 top50 调仓计划
+qbt backtest                # rqalpha 真实规则回测（T+1/涨跌停/印花税/100股整数倍）
+qbt report                  # 汇总 → results/report.html
+qbt all --pool hs300 --model lgb     # 一键全链路：数据→训练→回测→报告
+qbt status                  # 查看各阶段状态与最新结果
+```
+
+所有参数都有默认值（见 `qbt.yaml`），单步失败会中止并给出日志（`results/logs/`）。
 
 ## 完整复现步骤（ML 因子选股）
 

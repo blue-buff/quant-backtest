@@ -20,3 +20,7 @@ qlib_data_src_zz500/
 # mlflow 实验记录（qrun 运行产物，含预测/模型/指标）
 qlib_examples/mlruns/
 qlib_examples/mlruns_lgb_bak/
+
+# qbt 运行产物与本地配置（qbt init 生成）
+results/
+qbt.yaml

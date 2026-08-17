@@ -8,3 +8,5 @@ numpy
 pyyaml
 scikit-learn
 mlflow                 # qlib 实验记录（本地文件存储）
+typer                  # qbt CLI 框架
+rich                   # qbt 终端输出
