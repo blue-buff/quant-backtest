@@ -56,6 +56,7 @@ def backtest(
             "frequency": "1d",
             "run_type": "b",
             "strategy_file": str(strategy),
+            "capital_gain_tax_rate": 0,  # A股无资本利得税，显式配置消除 rqalpha 警告
         },
         "extra": {"log_level": "error"},
         "mod": {"sys_progress": {"enabled": False}, "sys_analyser": {"enabled": True}},
