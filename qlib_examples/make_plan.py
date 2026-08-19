@@ -3,6 +3,7 @@
 修复（OPTIMIZATION.md）：
 - P0-1: 调仓日期对齐每月最后一个真实交易日（不再用日历月末标签，避免
   rqalpha 在周末/节假日月末静默跳过导致整月不调仓）
+- P1-3: rank-buffer 换手口径（入池 top-K，跌出 top-(K+N) 才卖，--buffer 可调）
 - P1-4: T 日收盘信号 → T+1 交易日执行（默认开启；--same-day 可关闭）
 """
 import argparse
@@ -13,12 +14,14 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import MLRUNS_DIR, PLAN_FILE  # noqa: E402
-from qbt.planlib import build_plan  # noqa: E402
+from qbt.planlib import build_plan_with_buffer  # noqa: E402
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--topk", type=int, default=50, help="每月持仓数量")
+    ap.add_argument("--buffer", type=int, default=10,
+                    help="rank-buffer 大小 N（P1-3，0=关闭）")
     ap.add_argument("--out", default=PLAN_FILE, help="输出 CSV 路径")
     ap.add_argument("--pred", default=None, help="指定 pred.pkl（默认取 mlruns 最新）")
     ap.add_argument("--same-day", action="store_true",
@@ -39,7 +42,8 @@ def main():
     wide = pred["score"].unstack("instrument")
     print("宽表:", wide.shape, "| 日期:", wide.index[0], "~", wide.index[-1])
 
-    rows = build_plan(wide, topk=args.topk, execute_next_day=not args.same_day)
+    rows = build_plan_with_buffer(wide, topk=args.topk, buffer_n=args.buffer,
+                                  execute_next_day=not args.same_day)
     if not rows:
         sys.exit("未生成任何调仓计划：宽表为空或信号日无有效分数")
 

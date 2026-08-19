@@ -12,7 +12,7 @@ DEFAULT_CONFIG = {
     "data": {
         "start": "2023-01-01",
         "end": "2026-08-15",
-        "adjust": "2",
+        "adjust": "1",  # P2-3: 后复权 + 真实 factor（避免前复权基准漂移）
         "hs300_out": "qlib_data_src",
         "zz500_out": "qlib_data_src_zz500",
     },
@@ -22,12 +22,16 @@ DEFAULT_CONFIG = {
         "universe": "csi300",
         "benchmark": "SH000300",
     },
-    "plan": {"topk": 50, "freq": "ME", "out": "qlib_examples/rebalance_plan.csv"},
+    "plan": {"topk": 50, "freq": "ME", "rank_buffer": 10,  # P1-3: 跌出 top-(K+N) 才卖
+             "out": "qlib_examples/rebalance_plan.csv"},
     "backtest": {
         "capital": 1000000,
         "start": "2025-01-01",
         "end": "2026-08-14",
         "strategy": "qlib_examples/rq_strategy_qlib.py",
+        "slippage": 0.0,       # A3: 滑点比例（0=关闭；如 0.001=0.1%）
+        "participation": 0.05, # A3: 单日成交量参与率上限
+        "retry_days": 2,       # P2-4/A4: 未成交买单重试天数上限
     },
 }
 

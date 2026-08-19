@@ -6,9 +6,13 @@ from datetime import datetime
 import typer
 
 from qbt.config import load_config, project_root, resolve
+from qbt.pools import get_pool
 from qbt.state import write_state
 
-warnings.filterwarnings("ignore")
+# P2-6: 不再全局屏蔽警告；只忽略 rqalpha analyser 已知的 FutureWarning，
+# 其余警告保持可见，避免掩盖潜在问题
+warnings.filterwarnings("ignore", category=FutureWarning,
+                        message=".*Downcasting object dtype arrays.*")
 
 
 def backtest(
@@ -26,9 +30,14 @@ def backtest(
     end = end or cfg["backtest"]["end"]
     bundle = bundle or cfg.get("backtest", {}).get("bundle_path", "/root/.rqalpha/bundle")
 
-    plan_name = cfg["plan"]["out"] if pool == "hs300" else "qlib_examples/rebalance_plan_zz500.csv"
-    strategy_name = cfg["backtest"]["strategy"] if pool == "hs300" \
-        else "qlib_examples/rq_strategy_qlib_zz500.py"
+    # C1: 计划与策略路径来自股票池注册表
+    try:
+        pool_cfg = get_pool(pool)
+    except ValueError as e:
+        typer.secho(f"❌ {e}", fg="red")
+        raise typer.Exit(1)
+    plan_name = pool_cfg["plan_out"]
+    strategy_name = pool_cfg["strategy"]
     plan_file = root / plan_name
     if not plan_file.exists():
         typer.secho(f"调仓计划不存在: {plan_file}，先跑 qbt plan --pool {pool}", fg="red")
@@ -44,8 +53,11 @@ def backtest(
         typer.secho("缺少 rqalpha，请先 pip install rqalpha 并配置行情库", fg="red")
         raise typer.Exit(1)
 
-    # rqalpha 用 exec 加载策略文件，plan 路径经环境变量传入
+    # rqalpha 用 exec 加载策略文件，参数经环境变量传入
     os.environ["QBT_PLAN_FILE"] = str(plan_file)
+    os.environ["QBT_SLIPPAGE"] = str(cfg.get("backtest", {}).get("slippage", 0.0))
+    os.environ["QBT_PARTICIPATION"] = str(cfg.get("backtest", {}).get("participation", 0.05))
+    os.environ["QBT_RETRY_DAYS"] = str(cfg.get("backtest", {}).get("retry_days", 2))
 
     config = {
         "base": {
@@ -62,6 +74,8 @@ def backtest(
         "mod": {"sys_progress": {"enabled": False}, "sys_analyser": {"enabled": True}},
     }
     typer.echo(f"真实规则回测: {start} ~ {end}，本金 {capital:,.0f}，计划 {plan_file.name}")
+    typer.echo(f"   执行参数: 滑点 {os.environ['QBT_SLIPPAGE']} 参与率 {os.environ['QBT_PARTICIPATION']} "
+               f"重试 {os.environ['QBT_RETRY_DAYS']} 天（A3/P2-4）")
     write_state(backtest_status="running", backtest_info=f"{start}~{end} 回测中")
     results = run(config)
     analyser = results["sys_analyser"]

@@ -1,14 +1,15 @@
 # quant-backtest 项目开发计划
 
-> 状态：计划模式（未执行）。本计划基于 2026-08-17 项目现状与数据保真性审查结论制定。
+> 状态：执行中。本计划基于 2026-08-17 项目现状与数据保真性审查结论制定；
+> 2026-08-19 已按 OPTIMIZATION.md 完成执行层修复（见下）。
 
 **目标**：把 A股/港股量化回测学习项目升级为一个「保真、可复现、可持续研究」的因子研究流水线，并完成 GitHub 发布。
 
 **当前状态**：
 - 已跑通：backtesting.py → rqalpha 真实规则 → qlib ML 因子选股（Alpha158 + LightGBM/Linear，沪深300/中证500）→ 压力测试
-- 已产出：压力测试报告（HTML，`D:\quant_backup\report_stress_test.html`）、干净仓库（27 文件，git 历史已清理）
-- 已知失真源（有实证）：① 幸存者偏差（当前成分回看历史）② 前复权口径跨源差异 ~0.3% ③ 无滑点/停牌限制
-- 未完成：GitHub push（缺用户账号信息）
+- 已产出：压力测试报告（HTML，`D:\quant_backup\report_stress_test.html`）、干净仓库（git 历史已清理）
+- 2026-08-19 执行层修复（OPTIMIZATION.md）：P0-1 月末交易日对齐 / P0-2 plan lineage / P1-3 rank-buffer / P1-4 T+1 / P1-5 指标读 mlruns / P2-1~6 / A3 滑点参与率 / A4 停牌重试 / A2 历史成分脚本（baostock 历史参数已验证，2023-06 与当前成分差 74 只）/ C1 pool 注册表 / C2 tests+CI / C4 双配置合并 / B4 bootstrap 检验
+- 未完成：GitHub push（缺用户账号信息）；保真版 v2 报告（历史成分 + 滑点重跑后）；B1/B3/B6/B7 研究深化
 
 **技术栈**：Python 3.12 / qlib 0.9.7 / rqalpha 6.3.0 / LightGBM / baostock / backtesting.py / Docker 容器（hermes-1679f5b2）
 

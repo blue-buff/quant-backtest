@@ -28,7 +28,7 @@
 
 | 用途 | 方案 | 说明 |
 |---|---|---|
-| A股日线 | baostock | 免费无需注册，`adjustflag="2"` 前复权 |
+| A股日线 | baostock | 免费无需注册，`adjustflag="1"` 后复权 + 真实 factor（P2-3 修复） |
 | 港股日线 | 腾讯行情接口 | `web.ifzq.gtimg.cn/appstock/app/fqkline/get` |
 | rqalpha 行情库 | 米筐 bundle | 官方下载约 1GB，解压 3.3G，含分红/复权/ST/停牌 |
 | ⚠️ 东财接口（akshare） | 云服务器/容器 IP 会被断连 | 仅本地可用 |
@@ -54,8 +54,13 @@ quant/
 │   ├── rq_strategy_qlib*.py #   rqalpha 真实规则执行调仓计划
 │   ├── rq_run_qlib*.py      #   rqalpha 回测入口（100 万本金）
 │   └── rebalance_plan*.csv  #   调仓计划产物（示例）
+├── qbt/                    # qbt CLI（planlib.py 计划纯函数 / pools.py 股票池注册表）
+├── tests/                   # pytest 单元测试（python -m pytest tests/ -q）
+├── scripts/                 # B4: analysis_bootstrap.py（bootstrap 95% CI + Sharpe p 值）
+├── .github/workflows/ci.yml  # CI：pytest + 语法检查
 └── qlib_scripts/            # 数据管道
     ├── export_csv.py        #   baostock → CSV（沪深300 成分）
+    ├── export_csv_hist.py   #   A2: 按调仓日拉历史成分（消除幸存者偏差）
     ├── export_csv_zz500.py  #   baostock → CSV（中证500 成分）
     ├── dump_bin.py          #   CSV → qlib bin 格式
     ├── dump_utils.py
@@ -98,7 +103,7 @@ python3 qlib_scripts/export_csv_zz500.py    # 中证500 → qlib_data_src_zz500/
 # 2. 转 qlib 格式（dump_bin.py 为 qlib 0.9.x 适配版，参数名 --data_path）
 python3 qlib_scripts/dump_bin.py dump_all \
   --data_path qlib_data_src --qlib_dir ~/.qlib/qlib_data/cn_data \
-  --include_fields open,high,low,close,volume,vwap,factor
+  --include_fields open,high,low,close,volume,vwap,turn,factor
 # 中证500 同理，qlib_dir 换 cn_data_zz500；universe 列表：
 # grep -v '^SH000905' ~/.qlib/qlib_data/cn_data_zz500/instruments/all.txt > .../csi500.txt
 
@@ -115,7 +120,22 @@ python3 rq_run_qlib.py
 
 ## 压力测试结论（2025-01 ~ 2026-08，约 20 个月）
 
-**核心结论：策略超额只在「沪深300 + LightGBM」组合上成立，不是普适 alpha。**
+### v1.1 基线（2026-08-19 执行层修复后重跑，沪深300 + LightGBM，后复权数据）
+
+| 层 | 指标 | 数值 |
+|---|---|---|
+| qlib 简化层（含成本） | IC / ICIR / Rank IC | 0.0133 / 0.096 / 0.0131 |
+| qlib 简化层（含成本） | 超额年化 / IR / MDD | **+12.8%** / 1.10 / -15.4% |
+| rqalpha 真实规则层 | 总收益 / 年化 / Sharpe | **+39.9%** / +24.8% / 1.50 |
+| rqalpha 真实规则层 | MDD / 换手 / 交易笔数 | 8.35% / 12.8 倍 / 1207 笔 |
+
+要点：信号层超额（+12.8%）与修复前几乎一致，说明 P0-1/P0-2 等缺陷影响的是执行层；
+真实规则层总收益由缺陷版 +44.8% 降至 **+39.9%**（跳仓/换手放大被修正）。计划 19 个月全部为真实交易日。
+时间段/模型/股票池对比实验待按新口径重跑。
+
+### 缺陷版 v1.0（仅供方法参考，执行层缺陷未修）
+
+**核心结论（v1.0）：策略超额只在「沪深300 + LightGBM」组合上成立，不是普适 alpha。**
 
 | 关卡 | 检验 | 超额年化（含成本） | 结论 |
 |---|---|---|---|
@@ -124,9 +144,8 @@ python3 rq_run_qlib.py
 | 2. 模型 | LightGBM → Linear | +12.8% → +5.6% | 超额减半但为正：一半来自模型能力，一半是真实规律 |
 | 3. 股票池 | 沪深300 → 中证500 | **-2.4%** | 中证500 真实规则 +13.6%，大幅跑输同期指数 +44.1%；IC 相近（0.013）但换手成本+因子拥挤吃掉全部 alpha |
 
-> ⚠️ **2026-08 执行层修复**：上表结论基于旧版计划生成（日历月末标签 + 无 lineage），
-> 存在非交易月末整月不调仓的缺陷（OPTIMIZATION.md P0-1/P0-2）。代码已修复（交易日对齐、
-> T+1 执行、plan lineage），**基线数字待重跑后更新**，旧数字暂视为缺陷版 v1.0。
+> ⚠️ v1.0 基于旧版计划生成（日历月末标签 + 无 lineage），存在非交易月末整月不调仓的缺陷
+> （OPTIMIZATION.md P0-1/P0-2），数字仅供参考，结论待 v1.1 全量重跑后复核。
 
 风险提示：回测 ≠ 实盘（未计滑点/冲击成本/停牌）；成分股为当前快照（幸存者偏差）；超额随时间段/模型/股票池全面衰减。
 
@@ -141,6 +160,7 @@ python3 rq_run_qlib.py
    - 官方/镜像数据为 2020 年旧数据，建议自建（baostock → dump_bin）
 4. **回测可信度自查**：交易数异常（0 或过少）= 策略有 bug；确认收益/胜率不是 nan
 5. **调仓计划**：resample("ME").last() 的标签是日历月末，周末/节假日会被 rqalpha 静默跳过导致整月不调仓——须对齐每月最后一个交易日（现由 qbt/planlib.py 处理），且 T 日信号应 T+1 交易日执行（避免轻微前视）
+6. **换手口径**：qlib 简化层 TopkDropoutStrategy 是日度增量换仓，真实规则层若月度全量重置会人为放大换手——现由 planlib.build_plan_with_buffer（rank-buffer：入池 top-K、跌出 top-(K+N) 才卖）与策略层 topping-up 对齐
 
 ## 免责声明
 

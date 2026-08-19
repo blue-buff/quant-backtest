@@ -1,0 +1,25 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps
+        run: |
+          pip install pandas numpy pyyaml typer rich pytest
+          pip install -e .
+      - name: Syntax check
+        run: python -m py_compile qbt/*.py qbt/commands/*.py qlib_examples/*.py qlib_scripts/*.py config.py
+      - name: Unit tests (纯函数，零网络/零行情依赖)
+        run: python -m pytest tests/ -q
+      # 说明: 合成数据冒烟（10只假股票 CSV→dump→Linear 训练）需要 qlib 环境，
+      # 放在 scripts/smoke_synthetic.py，本地跑: python scripts/smoke_synthetic.py

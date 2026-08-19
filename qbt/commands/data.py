@@ -7,19 +7,16 @@ from pathlib import Path
 import typer
 
 from qbt.config import load_config, project_root, resolve
+from qbt.pools import get_pool, pool_names
 from qbt.state import write_state
 
 app = typer.Typer(help="数据管道：导出成分股日线 / 交叉校验 / 转 qlib bin 格式")
 
-POOLS = {
-    "hs300": ("query_hs300_stocks", "沪深300"),
-    "zz500": ("query_zz500_stocks", "中证500"),
-}
-
 
 def _out_dir(cfg: dict, pool: str) -> Path:
-    key = "hs300_out" if pool == "hs300" else "zz500_out"
-    return project_root() / cfg["data"][key]
+    """C1: 输出目录来自股票池注册表（可被 qbt.yaml 的 <pool>_out 覆盖）"""
+    p = get_pool(pool)
+    return project_root() / cfg["data"].get(f"{pool}_out", p["data_out"])
 
 
 @app.command("fetch")
@@ -29,9 +26,15 @@ def fetch(
     end: str = typer.Option(None, help="结束日期 YYYY-MM-DD（默认取配置）"),
     limit: int = typer.Option(0, help="只导出前 N 只（测试用，0=全部）"),
 ) -> None:
-    """从 baostock 导出成分股日线 CSV（前复权）"""
-    if pool not in POOLS:
-        typer.secho(f"未知股票池 {pool}，可选: {', '.join(POOLS)}", fg="red")
+    """从 baostock 导出成分股日线 CSV（后复权 + 真实 factor + turn）
+
+    P2-3: adjustflag=1 后复权，factor 取真实复权因子（避免前复权基准漂移）
+    P2-5: 保留 turn（换手率），Alpha158 流动性类因子不再缺失
+    """
+    try:
+        pool_cfg = get_pool(pool)
+    except ValueError as e:
+        typer.secho(f"❌ {e}", fg="red")
         raise typer.Exit(1)
     cfg = load_config()
     start = start or cfg["data"]["start"]
@@ -39,7 +42,7 @@ def fetch(
     out = _out_dir(cfg, pool)
     out.mkdir(parents=True, exist_ok=True)
 
-    typer.echo(f"导出 {POOLS[pool][1]} 日线 {start} ~ {end} → {out} (limit={limit or '全部'})")
+    typer.echo(f"导出 {pool_cfg['label']} 日线 {start} ~ {end} → {out} (limit={limit or '全部'})")
     try:
         import baostock as bs
         import pandas as pd
@@ -52,7 +55,7 @@ def fetch(
         typer.secho(f"baostock 登录失败: {lg.error_msg}", fg="red")
         raise typer.Exit(1)
 
-    fn = POOLS[pool][0]
+    fn = pool_cfg["query_fn"]
     rs = getattr(bs, fn)()
     codes, ok, skipped, failed = [], 0, 0, 0
     while rs.error_code == "0" and rs.next():
@@ -68,7 +71,7 @@ def fetch(
             try:
                 rs = bs.query_history_k_data_plus(
                     code,
-                    "date,open,high,low,close,volume,amount,turn",
+                    "date,open,high,low,close,volume,amount,turn,factor",
                     start_date=start, end_date=end, frequency="d", adjustflag=cfg["data"]["adjust"],
                 )
                 rows = []
@@ -78,17 +81,17 @@ def fetch(
                     skipped += 1
                     continue
                 df = pd.DataFrame(rows, columns=["date", "open", "high", "low", "close",
-                                                 "volume", "amount", "turn"])
-                for c in ["open", "high", "low", "close", "volume", "amount"]:
+                                                 "volume", "amount", "turn", "factor"])
+                for c in ["open", "high", "low", "close", "volume", "amount", "turn", "factor"]:
                     df[c] = df[c].astype(float)
                 df["vwap"] = (df["amount"] / df["volume"].replace(0, pd.NA)).fillna(df["close"])
-                df["factor"] = 1.0
+                # P2-3/P2-5: 真实复权因子 + 保留 turn
                 df.to_csv(out / f"{fname}.csv", index=False)
                 ok += 1
             except (ValueError, TypeError):
                 failed += 1
     # 补导基准指数（qlib 回测 benchmark 需要；须在 logout 前查询）
-    idx_code = "sh.000300" if pool == "hs300" else "sh.000905"
+    idx_code = pool_cfg["index_code"]
     try:
         rs = bs.query_history_k_data_plus(
             idx_code, "date,open,high,low,close,volume,amount",
@@ -97,13 +100,14 @@ def fetch(
         while rs.error_code == "0" and rs.next():
             idx_rows.append(rs.get_row_data())
         if idx_rows:
-            pd.DataFrame(idx_rows, columns=["date", "open", "high", "low", "close", "volume", "amount"]) \
-                .to_csv(out / f"{idx_code.replace('.', '')}.csv", index=False)
+            idx_df = pd.DataFrame(idx_rows, columns=["date", "open", "high", "low", "close", "volume", "amount"])
+            idx_df["turn"] = pd.NA  # P2-5: 指数无换手率，补空列避免 dump 缺字段
+            idx_df.to_csv(out / f"{idx_code.replace('.', '')}.csv", index=False)
             typer.echo(f"基准指数 {idx_code} 已导出 ({len(idx_rows)} 行)")
     except Exception as e:
         typer.secho(f"指数导出失败: {e}", fg="yellow")
     bs.logout()
-    write_state(data_status="done", data_info=f"{POOLS[pool][1]} ok={ok} skip={skipped} fail={failed}")
+    write_state(data_status="done", data_info=f"{pool_cfg['label']} ok={ok} skip={skipped} fail={failed}")
     typer.secho(f"✅ 完成: ok={ok} skip={skipped} fail={failed}，目录 {out}", fg="green")
 
 
@@ -164,8 +168,10 @@ def dump(
     qlib_dir: str = typer.Option(None, help="qlib 数据目录（默认 ~/.qlib/qlib_data/cn_data 或 cn_data_zz500）"),
 ) -> None:
     """CSV → qlib bin 格式（调用 dump_bin.py）"""
-    if pool not in POOLS:
-        typer.secho(f"未知股票池 {pool}", fg="red")
+    try:
+        pool_cfg = get_pool(pool)
+    except ValueError as e:
+        typer.secho(f"❌ {e}", fg="red")
         raise typer.Exit(1)
     cfg = load_config()
     src = _out_dir(cfg, pool)
@@ -173,9 +179,8 @@ def dump(
         typer.secho(f"{src} 没有 CSV，先跑 qbt data fetch --pool {pool}", fg="red")
         raise typer.Exit(1)
     if qlib_dir is None:
-        base = cfg["train"]["qlib_dir"].replace("cn_data", f"cn_data_{pool}") if pool == "zz500" \
-            else cfg["train"]["qlib_dir"]
-        qlib_dir = base
+        # C1: qlib 数据目录来自注册表；z500 不再靠字符串替换推断
+        qlib_dir = pool_cfg["qlib_dir"]
     qlib_dir = resolve(qlib_dir)
 
     dump_script = project_root() / "qlib_scripts" / "dump_bin.py"
@@ -183,7 +188,7 @@ def dump(
         sys.executable, str(dump_script), "dump_all",
         "--data_path", str(src),
         "--qlib_dir", qlib_dir,
-        "--include_fields", "open,high,low,close,volume,vwap,factor",
+        "--include_fields", "open,high,low,close,volume,vwap,turn,factor",
     ]
     typer.echo(f"转格式: {src} → {qlib_dir}")
     r = subprocess.run(cmd, capture_output=True, text=True)
@@ -194,12 +199,12 @@ def dump(
     typer.echo(f"✅ dump 完成 → {qlib_dir}")
 
     # 生成 universe 文件（剔除指数，qlib 训练用 instruments）
-    idx_sym = "SH000300" if pool == "hs300" else "SH000905"
-    uni_name = "csi300.txt" if pool == "hs300" else "csi500.txt"
+    idx_sym = pool_cfg["index_sym"]
+    uni_name = f"{pool_cfg['universe']}.txt"
     all_file = Path(qlib_dir) / "instruments" / "all.txt"
     if all_file.exists():
         lines = [l for l in all_file.read_text(encoding="utf-8").splitlines()
                  if l.strip() and not l.startswith(idx_sym)]
         (Path(qlib_dir) / "instruments" / uni_name).write_text("\n".join(lines) + "\n", encoding="utf-8")
         typer.echo(f"universe: {uni_name} ({len(lines)} 只)")
-    write_state(data_status="done", data_info=f"{POOLS[pool][1]} 已转 qlib 格式")
+    write_state(data_status="done", data_info=f"{pool_cfg['label']} 已转 qlib 格式")

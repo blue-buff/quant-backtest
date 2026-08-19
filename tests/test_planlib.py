@@ -69,6 +69,42 @@ def test_build_plan_drops_tail_without_next_trading_day():
     assert rows == [["2025-06-03", "600519.XSHG"]]
 
 
+def test_build_plan_with_buffer_keeps_rank_buffer():
+    """P1-3: 上期持仓仍在前 top-(K+N) 的保留；跌出 buffer 的不在目标列表（由策略卖出）；
+    新进 top-K 加入"""
+    wide = _wide({
+        # 期1 top2: A,B | buffer4: A,B,C,D
+        "2025-05-30": {"SH600519": 5.0, "SH600000": 4.0, "SH600036": 3.0,
+                       "SH600009": 2.0, "SH600010": 1.0},
+        # 期2 top2: A,C | buffer4: A,C,B,D → B 仍在 buffer，保留
+        "2025-06-30": {"SH600519": 6.0, "SH600000": 4.0, "SH600036": 5.0,
+                       "SH600009": 3.0, "SH600010": 2.0},
+        # 期3 top2: A,C | buffer4: A,C,D,E → B 跌出 buffer，不再在目标列表
+        "2025-07-31": {"SH600519": 6.0, "SH600000": 2.0, "SH600036": 5.0,
+                       "SH600009": 4.0, "SH600010": 3.0},
+    })
+    calendar = ["2025-05-30", "2025-06-03", "2025-06-30", "2025-07-01",
+                "2025-07-31", "2025-08-01"]
+    rows = planlib.build_plan_with_buffer(wide, topk=2, buffer_n=2, calendar=calendar)
+    assert rows == [
+        ["2025-06-03", "600519.XSHG", "600000.XSHG"],                    # 期1: top2
+        ["2025-07-01", "600519.XSHG", "600036.XSHG", "600000.XSHG"],     # 期2: top2 + 保留 B
+        ["2025-08-01", "600519.XSHG", "600036.XSHG"],                    # 期3: B 跌出被剔除
+    ]
+
+
+def test_build_plan_with_buffer_zero_is_plain_topk():
+    """buffer_n=0 → 与 build_plan 完全一致（全量重置）"""
+    wide = _wide({
+        "2025-05-30": {"SH600519": 3.0, "SH600000": 2.0, "SH600036": 1.0},
+        "2025-06-30": {"SH600519": 1.0, "SH600000": 3.0, "SH600036": 2.0},
+    })
+    calendar = ["2025-05-30", "2025-06-03", "2025-06-30", "2025-07-01"]
+    a = planlib.build_plan_with_buffer(wide, topk=2, buffer_n=0, calendar=calendar)
+    b = planlib.build_plan(wide, topk=2, calendar=calendar)
+    assert a == b
+
+
 def test_build_plan_drops_all_nan_month():
     wide = _wide({
         "2025-05-30": {"SH600519": 3.0},

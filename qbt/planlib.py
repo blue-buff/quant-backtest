@@ -92,6 +92,53 @@ def build_plan(
     return rows
 
 
+def build_plan_with_buffer(
+    wide: pd.DataFrame,
+    topk: int = 50,
+    buffer_n: int = 10,
+    freq: str = "ME",
+    execute_next_day: bool = True,
+    calendar=None,
+) -> list[list[str]]:
+    """P1-3: rank-buffer 月度调仓计划（对齐 qlib TopkDropoutStrategy 语义）。
+
+    - 入池：每月 top-K 中不在上期持仓的新面孔 → 买入
+    - 保留：上期持仓仍在前 top-(K+N) 的 → 继续持有（rank buffer，N 默认 10）
+    - 卖出：上期持仓跌出 top-(K+N) 的 → 不在目标列表 → rqalpha 策略清仓
+
+    输出每期【目标持仓列表】= 本期 top-K ∪ 上期持仓 ∩ top-(K+N)（按分数降序），
+    与普通 build_plan 相同的 CSV 格式，rqalpha 策略无需感知 rank-buffer。
+    """
+    wide = wide.sort_index()
+    signal_dates = month_end_trading_days(wide, freq)
+    cal = None
+    if execute_next_day:
+        cal = sorted({pd.Timestamp(x) for x in (wide.index if calendar is None else calendar)})
+    rows: list[list[str]] = []
+    held: set[str] = set()
+    for sig in signal_dates:
+        scores = wide.loc[sig].dropna().sort_values(ascending=False)
+        if scores.empty:
+            continue
+        topk_syms = scores.head(topk).index.tolist()
+        keep = set(scores.head(topk + buffer_n).index) if buffer_n and buffer_n > 0 else set()
+        # 上期持仓仍在前 top-(K+N) 的保留（按分数序），再拼本期新进 top-K
+        held_in_buffer = [s for s in scores.index if s in held and s in keep and s not in topk_syms]
+        target = topk_syms + held_in_buffer
+        if not target:
+            continue
+        if execute_next_day:
+            i = bisect.bisect_right(cal, sig)
+            if i >= len(cal):
+                continue
+            exec_date = cal[i]
+        else:
+            exec_date = sig
+        rows.append([exec_date.strftime("%Y-%m-%d")] + [to_rqalpha(s) for s in target])
+        held = set(target)
+    return rows
+
+
 def find_pred_by_run_id(root: Path, run_id: str) -> Path:
     """按 mlflow run_id 定位 pred.pkl（P0-2：拒绝按 mtime 兜底）"""
     cands = sorted((root / "qlib_examples" / "mlruns").glob(f"*/{run_id}/artifacts/pred.pkl"))

@@ -27,12 +27,12 @@ qbt status                        # 查看各阶段结果
 | 命令 | 说明 | 常用参数 |
 |---|---|---|
 | `qbt init` | 生成 `qbt.yaml` 配置 + `results/` 目录 | `-f/--force` 覆盖已有配置 |
-| `qbt data fetch` | baostock 导出成分股日线（前复权，含基准指数） | `--pool hs300/zz500`、`--limit N`（测试）、`--start/--end` |
+| `qbt data fetch` | baostock 导出成分股日线（后复权 + 真实 factor + turn，含基准指数） | `--pool hs300/zz500`、`--limit N`（测试）、`--start/--end` |
 | `qbt data validate` | 交叉校验：本地 CSV vs 腾讯行情接口 | `--n 抽查数`、`--days`、`--threshold`（默认 0.5%） |
 | `qbt data dump` | CSV → qlib bin 格式，自动生成 universe 文件 | `--pool`、`--qlib-dir` |
 | `qbt train` | qlib 训练 + 简化规则回测，解析 IC/超额指标 | `--model lgb/linear`、`--pool`、`--tag`、`--yaml-path` |
-| `qbt plan` | 训练 lineage 对应 pred.pkl → 每月末交易日 top-K 调仓计划（T+1 执行） | `--topk`（默认 50）、`--freq`（默认 ME）、`--pool` |
-| `qbt backtest` | rqalpha 真实规则回测（月度等权调仓） | `--capital`（默认 100 万）、`--start/--end`、`--pool`、`--bundle` |
+| `qbt plan` | 训练 lineage 对应 pred.pkl → 每月末交易日调仓计划（rank-buffer + T+1 执行） | `--topk`（默认 50）、`--buffer`（默认 10）、`--freq`（默认 ME）、`--pool` |
+| `qbt backtest` | rqalpha 真实规则回测（月度等权调仓；滑点/参与率/停牌重试经 qbt.yaml 注入） | `--capital`（默认 100 万）、`--start/--end`、`--pool`、`--bundle`；执行参数 `backtest.slippage/participation/retry_days` |
 | `qbt report` | 汇总各阶段结果 → `results/report.html` | `--out` |
 | `qbt all` | 一键全链路：fetch → dump → train → plan → backtest → report | `--pool`、`--model`、`--capital` |
 | `qbt status` | 各阶段状态 + 关键指标（读 `results/status.json`） | — |
@@ -48,17 +48,21 @@ project:
 data:
   start: 2023-01-01             # 数据导出区间
   end: 2026-08-15
-  adjust: "2"                   # 前复权
+  adjust: "1"                   # 后复权 + 真实 factor（P2-3）
 train:
   yaml: qlib_examples/lightgbm_alpha158_full.yaml   # 训练模板
   qlib_dir: ~/.qlib/qlib_data/cn_data               # qlib 数据目录
 plan:
   topk: 50                      # 每月持仓数
   freq: ME                      # 月末调仓
+  rank_buffer: 10               # P1-3: 跌出 top-(K+N) 才卖
 backtest:
   capital: 1000000              # 回测本金
   start: 2025-01-01             # 回测区间（样本外）
   end: 2026-08-14
+  slippage: 0.0                 # A3: 滑点比例（0=关闭）
+  participation: 0.05           # A3: 单日成交量参与率上限
+  retry_days: 2                 # P2-4/A4: 未成交买单重试天数上限
 ```
 
 ## 工作流示例
@@ -103,9 +107,9 @@ results/
 
 ## 已知限制（诚实声明）
 
-- **幸存者偏差**：成分股为当前快照，回看历史（改进方向：按调仓日拉历史成分）
-- 2026-08 已修复执行层缺陷：调仓日期对齐每月最后一个交易日（不再有周末/节假日月末被 rqalpha 静默跳过）、T 日信号 T+1 执行、plan 强制 lineage（train 写入 run_id/pool，交叉池显式报错）。修复后需重跑基线，旧报告结论（README 压力测试表）为缺陷版 v1.0
-- **无滑点模型**：真实规则已含印花税/佣金，但未计冲击成本
+- **幸存者偏差**：默认 fetch 仍为当前成分快照；已提供 `qlib_scripts/export_csv_hist.py` 按调仓日拉历史成分（baostock 历史参数已验证：2023-06 与当前成分差 74 只），配合 dump 后可消除
+- 2026-08 执行层修复完成：月末交易日对齐（P0-1）、plan lineage（P0-2）、rank-buffer 换手口径（P1-3）、T+1 执行（P1-4）、指标读 mlruns 文件（P1-5）、topping-up（P2-1）、停牌重试（P2-4/A4）、滑点与参与率（A3）、后复权真实 factor（P2-3）、turn 字段（P2-5）；旧压力测试结论为缺陷版 v1.0，基线以最新 `qbt all` 结果为准
+- **滑点为固定比例 + 参与率上限**（qbt.yaml `backtest.slippage/participation`），非逐笔冲击成本模型，敏感性分析需自行分档
 - 训练/回测区间硬编码于 `qbt.yaml` 与 qlib yaml 模板，改区间需同步两处
 - 简化规则（qlib 段）无 T+1/涨跌停，真实规则（rqalpha 段）才有
 

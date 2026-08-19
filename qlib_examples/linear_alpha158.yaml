@@ -20,7 +20,8 @@ port_analysis_config: &id002
     exchange_kwargs:
       close_cost: 0.0015
       deal_price: close
-      limit_threshold: 0.095
+      # P2-2: top50 含 20% 涨跌幅板块（688xxx/300xxx/301xxx），0.095 只覆盖主板
+      limit_threshold: 0.195
       min_cost: 5
       open_cost: 0.0005
     start_time: 2025-01-01

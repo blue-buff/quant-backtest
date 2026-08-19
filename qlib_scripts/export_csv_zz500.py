@@ -1,4 +1,8 @@
-"""baostock 导出中证500 日线为 qlib dump 格式 CSV（前复权，2023-2026）"""
+"""baostock 导出中证500 日线为 qlib dump 格式 CSV（后复权 + 真实 factor + turn，2023-2026）
+
+P2-3: adjustflag=1 后复权，factor 取真实复权因子（不再硬编码 1.0）
+P2-5: turn（换手率）字段保留导出，Alpha158 的流动性类因子不再缺失
+"""
 import sys
 import os
 import pandas as pd
@@ -28,8 +32,8 @@ for i, code in enumerate(codes):
     fname = code.replace(".", "")  # sh.600519 -> sh600519
     try:
         rs = bs.query_history_k_data_plus(
-            code, "date,open,high,low,close,volume,amount,turn",
-            start_date=START, end_date=END, frequency="d", adjustflag="2")
+            code, "date,open,high,low,close,volume,amount,turn,factor",
+            start_date=START, end_date=END, frequency="d", adjustflag="1")
         rows = []
         while rs.error_code == "0" and rs.next():
             rows.append(rs.get_row_data())
@@ -39,13 +43,13 @@ for i, code in enumerate(codes):
                 print(f"  [{i}] {code} 数据不足({len(rows)}行)", flush=True)
             continue
         df = pd.DataFrame(rows, columns=["date", "open", "high", "low", "close",
-                                         "volume", "amount", "turn"])
-        for c in ["open", "high", "low", "close", "volume", "amount"]:
+                                         "volume", "amount", "turn", "factor"])
+        for c in ["open", "high", "low", "close", "volume", "amount", "turn", "factor"]:
             df[c] = df[c].astype(float)
         # vwap = 成交额/成交量（元/股），成交量为 0 时回退到收盘价
         df["vwap"] = (df["amount"] / df["volume"].replace(0, pd.NA)).fillna(df["close"])
-        df["factor"] = 1.0  # 价格已前复权，factor=1
-        df = df[["date", "open", "high", "low", "close", "volume", "vwap", "factor"]]
+        # P2-3: 真实复权因子（后复权口径）；P2-5: 保留 turn 供 Alpha158 流动性因子
+        df = df[["date", "open", "high", "low", "close", "volume", "vwap", "turn", "factor"]]
         df.to_csv(f"{OUT}/{fname}.csv", index=False)
         ok += 1
     except Exception as e:

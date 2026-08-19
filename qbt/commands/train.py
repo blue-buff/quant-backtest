@@ -10,6 +10,7 @@ import typer
 import yaml
 
 from qbt.config import load_config, project_root
+from qbt.pools import get_pool
 from qbt.state import log_dir, write_state
 
 MODELS = {
@@ -80,14 +81,17 @@ def train(
     if model not in MODELS:
         typer.secho(f"未知模型 {model}，可选: {', '.join(MODELS)}", fg="red")
         raise typer.Exit(1)
+    try:
+        pool_cfg = get_pool(pool)
+    except ValueError as e:
+        typer.secho(f"❌ {e}", fg="red")
+        raise typer.Exit(1)
     cfg = load_config()
     root = project_root()
 
-    # 1. 选择/生成 yaml
+    # 1. 选择/生成 yaml（C1: 模板来自股票池注册表）
     if yaml_path is None:
-        yaml_path = cfg["train"]["yaml"]
-        if pool == "zz500":
-            yaml_path = "qlib_examples/lightgbm_alpha158_zz500.yaml"
+        yaml_path = pool_cfg["yaml"]
     yaml_path = (root / yaml_path).resolve()
     if not yaml_path.exists():
         typer.secho(f"yaml 不存在: {yaml_path}", fg="red")
