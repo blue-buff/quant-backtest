@@ -1,20 +1,27 @@
-"""qbt plan: pred.pkl → 月度调仓计划 CSV"""
+"""qbt plan: pred.pkl → 月度调仓计划 CSV
+
+修复（OPTIMIZATION.md）：
+- P0-1: 计划日期对齐每月最后一个交易日（不再用日历月末标签）
+- P0-2: 按 train 写入 state 的 lineage（run_id/pool）定位 pred，pool 不匹配显式报错
+- P1-4: T 日收盘信号 → T+1 交易日执行
+"""
 import pickle
-from datetime import datetime
 from pathlib import Path
 
 import typer
 
 from qbt.config import load_config, project_root
-from qbt.state import write_state
+from qbt.planlib import build_plan, load_calendar, resolve_plan_pred
+from qbt.state import read_state, write_state
 
 
-def _latest_pred(root: Path) -> Path:
-    cands = sorted((root / "qlib_examples" / "mlruns").glob("*/*/artifacts/pred.pkl"),
-                   key=lambda p: p.stat().st_mtime)
-    if not cands:
-        raise FileNotFoundError("未找到 pred.pkl，先跑 qbt train")
-    return cands[-1]
+def _calendar_from_cfg(cfg: dict):
+    """优先用 qlib 交易日历（calendars/day.txt），缺失则回退到 pred 自身索引"""
+    try:
+        qlib_dir = Path(cfg["train"]["qlib_dir"]).expanduser()
+        return load_calendar(qlib_dir / "calendars" / "day.txt")
+    except (KeyError, FileNotFoundError):
+        return None
 
 
 def plan(
@@ -23,7 +30,7 @@ def plan(
     out: str = typer.Option(None, help="输出 CSV 路径"),
     pool: str = typer.Option("hs300", help="股票池: hs300 / zz500（决定默认输出文件）"),
 ) -> None:
-    """从最新 pred.pkl 生成每月 top-K 调仓计划"""
+    """从训练 lineage 对应的 pred.pkl 生成每月 top-K 调仓计划"""
     import pandas as pd
 
     cfg = load_config()
@@ -31,28 +38,31 @@ def plan(
     topk = topk or cfg["plan"]["topk"]
     freq = freq or cfg["plan"]["freq"]
     if out is None:
-        out = str(root / cfg["plan"]["out"]) if pool == "hs300" \
-            else str(root / "qlib_examples" / "rebalance_plan_zz500.csv")
+        out = (str(root / cfg["plan"]["out"]) if pool == "hs300"
+               else str(root / "qlib_examples" / "rebalance_plan_zz500.csv"))
 
-    pred_path = _latest_pred(root)
+    # P0-2: 必须用 train 记录的 run_id 定位 pred；pool 不匹配直接报错
+    try:
+        pred_path = resolve_plan_pred(read_state(), pool, root)
+    except (FileNotFoundError, ValueError) as e:
+        typer.secho(f"❌ {e}", fg="red")
+        raise typer.Exit(1)
+    run_id = pred_path.parent.parent.name
     typer.echo(f"使用 pred: {pred_path}")
     pred = pickle.load(open(pred_path, "rb"))
     wide = pred["score"].unstack("instrument")
-    monthly = wide.resample(freq).last()
-    typer.echo(f"调仓月份数: {len(monthly)}")
-
-    def to_rqalpha(symbol: str) -> str:
-        if symbol.startswith("SH"):
-            return symbol[2:] + ".XSHG"
-        if symbol.startswith("SZ"):
-            return symbol[2:] + ".XSHE"
-        return symbol
-
-    plan_rows = []
-    for dt, row in monthly.iterrows():
-        top = row.dropna().sort_values(ascending=False).head(topk).index.tolist()
-        plan_rows.append([dt.strftime("%Y-%m-%d")] + [to_rqalpha(s) for s in top])
-    pd.DataFrame(plan_rows).to_csv(out, index=False, header=False)
-    n_months = len(plan_rows)
+    rows = build_plan(wide, topk=topk, freq=freq,
+                      execute_next_day=True, calendar=_calendar_from_cfg(cfg))
+    if not rows:
+        typer.secho("❌ 未生成任何调仓计划：宽表为空或信号日无有效分数", fg="red")
+        raise typer.Exit(1)
+    pd.DataFrame(rows).to_csv(out, index=False, header=False)
+    n_months = len(rows)
     typer.secho(f"✅ 调仓计划: {n_months} 个月 × {topk} 只 → {out}", fg="green")
-    write_state(plan_status="done", plan_info=f"{n_months} 个月 × top{topk}（{Path(out).name}）")
+    typer.echo(f"   日期区间: {rows[0][0]} ~ {rows[-1][0]}（月末交易日对齐 + T+1 执行）")
+    write_state(
+        plan_status="done",
+        plan_info=f"{n_months} 个月 × top{topk}（{Path(out).name}）",
+        plan_run={"pool": pool, "topk": topk, "freq": freq,
+                  "pred_run_id": run_id, "out": out},
+    )

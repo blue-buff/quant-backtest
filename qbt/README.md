@@ -31,7 +31,7 @@ qbt status                        # 查看各阶段结果
 | `qbt data validate` | 交叉校验：本地 CSV vs 腾讯行情接口 | `--n 抽查数`、`--days`、`--threshold`（默认 0.5%） |
 | `qbt data dump` | CSV → qlib bin 格式，自动生成 universe 文件 | `--pool`、`--qlib-dir` |
 | `qbt train` | qlib 训练 + 简化规则回测，解析 IC/超额指标 | `--model lgb/linear`、`--pool`、`--tag`、`--yaml-path` |
-| `qbt plan` | 最新 pred.pkl → 每月 top-K 调仓计划 | `--topk`（默认 50）、`--freq`（默认 ME）、`--pool` |
+| `qbt plan` | 训练 lineage 对应 pred.pkl → 每月末交易日 top-K 调仓计划（T+1 执行） | `--topk`（默认 50）、`--freq`（默认 ME）、`--pool` |
 | `qbt backtest` | rqalpha 真实规则回测（月度等权调仓） | `--capital`（默认 100 万）、`--start/--end`、`--pool`、`--bundle` |
 | `qbt report` | 汇总各阶段结果 → `results/report.html` | `--out` |
 | `qbt all` | 一键全链路：fetch → dump → train → plan → backtest → report | `--pool`、`--model`、`--capital` |
@@ -104,6 +104,7 @@ results/
 ## 已知限制（诚实声明）
 
 - **幸存者偏差**：成分股为当前快照，回看历史（改进方向：按调仓日拉历史成分）
+- 2026-08 已修复执行层缺陷：调仓日期对齐每月最后一个交易日（不再有周末/节假日月末被 rqalpha 静默跳过）、T 日信号 T+1 执行、plan 强制 lineage（train 写入 run_id/pool，交叉池显式报错）。修复后需重跑基线，旧报告结论（README 压力测试表）为缺陷版 v1.0
 - **无滑点模型**：真实规则已含印花税/佣金，但未计冲击成本
 - 训练/回测区间硬编码于 `qbt.yaml` 与 qlib yaml 模板，改区间需同步两处
 - 简化规则（qlib 段）无 T+1/涨跌停，真实规则（rqalpha 段）才有
@@ -116,6 +117,9 @@ pip install -e . && qbt --help
 
 # 语法检查
 python -m py_compile qbt/*.py qbt/commands/*.py
+
+# 单元测试（OPTIMIZATION.md C2；纯函数，零网络/零数据依赖）
+python -m pytest tests/ -q
 ```
 
-测试建议：`qbt data fetch --limit 5` → `qbt data dump` → 小样本训练快速验证链路。
+冒烟建议：`qbt data fetch --limit 5` → `qbt data dump` → 小样本训练快速验证链路。

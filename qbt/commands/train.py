@@ -18,9 +18,56 @@ MODELS = {
                "kwargs": {"fit_intercept": True}},
 }
 
+# mlruns 中持久化的指标文件名 → state 字段
+METRIC_KEYS = {
+    "ic": "IC",
+    "icir": "ICIR",
+    "rank_ic": "Rank IC",
+    "rank_icir": "Rank ICIR",
+    "excess_ann": "1day.excess_return_with_cost.annualized_return",
+    "excess_ir": "1day.excess_return_with_cost.information_ratio",
+    "excess_mdd": "1day.excess_return_with_cost.max_drawdown",
+}
+
+_MODEL_LABEL = {"LGBModel": "lgb", "LinearModel": "linear"}
+
 
 def _model_kwargs(model: str) -> dict:
     return dict(MODELS[model])
+
+
+def _newest_pred_path(root: Path) -> Path | None:
+    """当前 qrun 刚写完的 pred.pkl（mlruns 内最新，用于提取 run_id）"""
+    cands = sorted((root / "qlib_examples" / "mlruns").glob("*/*/artifacts/pred.pkl"),
+                   key=lambda p: p.stat().st_mtime)
+    return cands[-1] if cands else None
+
+
+def read_run_metrics(run_dir: Path) -> dict[str, float]:
+    """读 mlruns/<exp>/<run>/metrics/* 文件（mlflow 落盘格式: 'timestamp value'）。
+
+    替代正则解析 qrun stdout（OPTIMIZATION.md P1-5）：qlib 升级导致输出格式
+    变化时指标仍可稳定读取；文件缺失时调用方回退到 stdout 解析。
+    """
+    metrics: dict[str, float] = {}
+    mdir = run_dir / "metrics"
+    if not mdir.is_dir():
+        return metrics
+    for f in sorted(mdir.iterdir()):
+        try:
+            lines = [ln for ln in f.read_text(encoding="utf-8").splitlines() if ln.strip()]
+            if lines:
+                # mlflow 落盘格式: "<timestamp> <value> <step>"，取 value 列
+                parts = lines[-1].split()
+                metrics[f.name] = float(parts[1] if len(parts) >= 3 else parts[-1])
+        except (OSError, ValueError):
+            continue
+    return metrics
+
+
+def read_run_param(run_dir: Path, name: str) -> str | None:
+    p = run_dir / "params" / name
+    return p.read_text(encoding="utf-8").strip() if p.exists() else None
 
 
 def train(
@@ -77,14 +124,26 @@ def train(
         write_state(train_status="failed", train_info=tail[:200])
         raise typer.Exit(1)
 
-    # 4. 解析结果
-    txt = r.stdout
-    ic = _grep_float(txt, r"'IC': np\.float64\(([\d.eE+-]+)\)")
-    icir = _grep_float(txt, r"'ICIR': np\.float64\(([\d.eE+-]+)\)")
-    exc_ann = _grep_float(txt, r"excess return with cost.*?annualized_return\s+([\d.-]+)", dotall=True)
-    exc_ir = _grep_float(txt, r"excess return with cost.*?information_ratio\s+([\d.-]+)", dotall=True)
-    exc_mdd = _grep_float(txt, r"excess return with cost.*?max_drawdown\s+([\d.-]+)", dotall=True)
-    model_used = "linear" if "LinearModel" in txt else ("lgb" if "LGBModel" in txt else "?")
+    # 4. 解析结果：优先读 mlruns metrics/ 文件（P1-5），缺失才回退 stdout 正则
+    pred_path = _newest_pred_path(root)
+    run_dir = pred_path.parent.parent if pred_path else None
+    metrics = read_run_metrics(run_dir) if run_dir else {}
+    if metrics:
+        ic = metrics.get(METRIC_KEYS["ic"])
+        icir = metrics.get(METRIC_KEYS["icir"])
+        exc_ann = metrics.get(METRIC_KEYS["excess_ann"])
+        exc_ir = metrics.get(METRIC_KEYS["excess_ir"])
+        exc_mdd = metrics.get(METRIC_KEYS["excess_mdd"])
+        model_class = read_run_param(run_dir, "model.class")
+        model_used = _MODEL_LABEL.get(model_class or "", "?")
+    else:
+        txt = r.stdout
+        ic = _grep_float(txt, r"'IC': np\.float64\(([\d.eE+-]+)\)")
+        icir = _grep_float(txt, r"'ICIR': np\.float64\(([\d.eE+-]+)\)")
+        exc_ann = _grep_float(txt, r"excess return with cost.*?annualized_return\s+([\d.-]+)", dotall=True)
+        exc_ir = _grep_float(txt, r"excess return with cost.*?information_ratio\s+([\d.-]+)", dotall=True)
+        exc_mdd = _grep_float(txt, r"excess return with cost.*?max_drawdown\s+([\d.-]+)", dotall=True)
+        model_used = "linear" if "LinearModel" in txt else ("lgb" if "LGBModel" in txt else "?")
 
     info = (f"{model_used} IC={ic or '?'} ICIR={icir or '?'} | "
             f"超额年化={exc_ann * 100 if exc_ann is not None else '?'}% "
@@ -93,10 +152,19 @@ def train(
     typer.echo(f"   IC={ic}  ICIR={icir}")
     typer.echo(f"   超额(含成本) 年化={exc_ann * 100 if exc_ann is not None else '?'}%  "
                f"IR={exc_ir}  MDD={exc_mdd}")
-    write_state(train_status="done", train_info=info,
-                train_metrics={"ic": ic, "icir": icir, "excess_ann": exc_ann,
-                               "excess_ir": exc_ir, "excess_mdd": exc_mdd,
-                               "model": model_used, "pool": pool, "tag": tag})
+    if run_dir:
+        typer.echo(f"   lineage: run_id={run_dir.name}  pred={pred_path}")
+        write_state(train_status="done", train_info=info,
+                    train_metrics={"ic": ic, "icir": icir, "excess_ann": exc_ann,
+                                   "excess_ir": exc_ir, "excess_mdd": exc_mdd,
+                                   "model": model_used, "pool": pool, "tag": tag},
+                    train_run={"run_id": run_dir.name, "pool": pool,
+                               "model": model_used, "pred_path": str(pred_path)})
+    else:
+        write_state(train_status="done", train_info=info + "（未找到 pred.pkl，无 lineage）",
+                    train_metrics={"ic": ic, "icir": icir, "excess_ann": exc_ann,
+                                   "excess_ir": exc_ir, "excess_mdd": exc_mdd,
+                                   "model": model_used, "pool": pool, "tag": tag})
 
 
 def _grep_float(txt: str, pattern: str, dotall: bool = False) -> float | None:
