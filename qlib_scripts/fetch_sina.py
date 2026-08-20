@@ -112,9 +112,9 @@ def main():
     out = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), args.out)
     os.makedirs(out, exist_ok=True)
 
-    syms = stock_symbols_from_dir(out)
-    if not syms:
-        print("目录无旧 CSV，改用成分接口（index_stock_cons / sina）")
+    # 断点续传：优先用指数完整成分列表；已下载且行数足够的跳过
+    syms = []
+    try:
         cons = ak.index_stock_cons(symbol="000300" if args.pool == "hs300" else "000905")
         codes = cons["品种代码"].astype(str).str.zfill(6)
 
@@ -126,9 +126,33 @@ def main():
             return "sz" + c
 
         syms = sorted(_to_sym(c) for c in codes)
+        print(f"成分接口返回 {len(syms)} 只")
+    except Exception as e:  # noqa: BLE001
+        print(f"成分接口失败（{type(e).__name__}: {e}），退回目录 CSV 列表")
+        syms = stock_symbols_from_dir(out)
+    if not syms:
+        raise SystemExit("没有成分列表，无法拉取")
+
+    def _downloaded_ok(sym, min_rows=900):
+        fp = os.path.join(out, f"{sym}.csv")
+        if not os.path.exists(fp):
+            return False
+        try:
+            with open(fp, encoding="utf-8") as f:
+                return sum(1 for _ in f) - 1 >= min_rows
+        except OSError:
+            return False
+
+    skipped_before = sum(1 for s in syms if _downloaded_ok(s))
+    syms = [s for s in syms if not _downloaded_ok(s)]
+    print(f"续传：跳过已下载 {skipped_before} 只，待拉 {len(syms)} 只")
     if args.limit > 0:
         syms = syms[: args.limit]
     print(f"股票数: {len(syms)}（{syms[0]} ~ {syms[-1]}）")
+    print("前 6 只:", syms[:6])
+    bad = [s for s in syms if not (len(s) == 8 and s[:2] in ("sh", "sz", "bj"))]
+    if bad:
+        raise SystemExit(f"symbol 格式异常（应如 sh600000）: {bad[:8]}")
 
     ok, fails = 0, []
     t0 = time.time()
