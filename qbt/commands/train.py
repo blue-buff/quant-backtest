@@ -109,9 +109,10 @@ def train(
     if model == "linear" or c.get("task", {}).get("model", {}).get("class") != MODELS[model]["class"]:
         c["model"] = dict(_model_kwargs(model))
         c.setdefault("task", {})["model"] = dict(_model_kwargs(model))
-        # 实验名隔离，避免 mlflow 复用旧实验产物
-        exp_name = f"{'linear' if model == 'linear' else 'workflow'}_{pool}_{datetime.now():%m%d%H%M}"
-        c["experiment_name"] = exp_name
+    # 审计修复 D: 每次训练都用独立实验名（避免 run 混入 Default 实验，
+    # 实验名与模型/池/时间绑定，mlflow 组织规范化）
+    exp_name = f"{'linear' if model == 'linear' else 'workflow'}_{pool}_{datetime.now():%m%d%H%M}"
+    c["experiment_name"] = exp_name
 
     work_yaml = root / "results" / f"train_{model}_{pool}_{datetime.now():%Y%m%d_%H%M%S}.yaml"
     work_yaml.parent.mkdir(parents=True, exist_ok=True)

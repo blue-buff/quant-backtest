@@ -17,10 +17,15 @@ from qbt.pools import get_pool
 from qbt.state import read_state, write_state
 
 
-def _calendar_from_cfg(cfg: dict):
-    """优先用 qlib 交易日历（calendars/day.txt），缺失则回退到 pred 自身索引"""
+def _calendar_from_cfg(cfg: dict, pool_cfg: dict | None = None):
+    """优先用 qlib 交易日历（calendars/day.txt），缺失则回退到 pred 自身索引
+
+    审计修复 C: 日历目录取当前股票池的 qlib_dir（hs300/zz500 日历相同，
+    但逻辑上应读对应用例，避免未来池间日历差异时静默用错）。
+    """
     try:
-        qlib_dir = Path(cfg["train"]["qlib_dir"]).expanduser()
+        base = pool_cfg["qlib_dir"] if pool_cfg else cfg["train"]["qlib_dir"]
+        qlib_dir = Path(base).expanduser()
         return load_calendar(qlib_dir / "calendars" / "day.txt")
     except (KeyError, FileNotFoundError):
         return None
@@ -61,7 +66,7 @@ def plan(
     pred = pickle.load(open(pred_path, "rb"))
     wide = pred["score"].unstack("instrument")
     rows = build_plan_with_buffer(wide, topk=topk, buffer_n=buffer, freq=freq,
-                                   execute_next_day=True, calendar=_calendar_from_cfg(cfg))
+                                   execute_next_day=True, calendar=_calendar_from_cfg(cfg, pool_cfg))
     if not rows:
         typer.secho("❌ 未生成任何调仓计划：宽表为空或信号日无有效分数", fg="red")
         raise typer.Exit(1)

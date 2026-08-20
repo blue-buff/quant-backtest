@@ -65,25 +65,34 @@ def report(
     rows.append(f"<tr><td>报告</td><td>done</td><td>{out_path.name}</td></tr>")
 
     ic_html = f"<tr><td>IC / ICIR</td><td>{tm.get('ic', '—')} / {tm.get('icir', '—')}</td></tr>" if tm else ""
-    # P1-1（代码对比审查）: 基准对比（同期沪深300 收益与超额）
+    # P1-1（对比审查）+ 审计修复 A: 优先用 rqalpha 官方 benchmark 指标
+    # （analyser 基于 bundle 指数计算），缺失时回退到本地指数 CSV 自算
     bench_rows = ""
-    try:
-        import pandas as _pd
-        bench_csv = root / "qlib_data_src" / "sh000300.csv"
-        if bench_csv.exists() and bm:
-            _bs = cfg_backtest.get("start")
-            _be = cfg_backtest.get("end")
-            _b = _pd.read_csv(bench_csv)
-            _b = _b[(_b["date"] >= str(_bs)) & (_b["date"] <= str(_be))]
-            if len(_b) > 1:
-                _bench = float(_b["close"].iloc[-1] / _b["close"].iloc[0] - 1)
-                _excess = float(bm.get("total_returns", 0)) - _bench
-                bench_rows = "".join([
-                    f"<tr><td>同期沪深300 涨幅</td><td>{_fmt_pct(_bench)}</td></tr>",
-                    f"<tr><td>超额收益（总收益-基准）</td><td class='{'pos' if _excess > 0 else 'neg'}'>{_fmt_pct(_excess)}</td></tr>",
-                ])
-    except Exception:
-        bench_rows = ""
+    _bench = bm.get("benchmark_returns")
+    _excess = bm.get("excess_returns")
+    if _bench is not None and _excess is not None:
+        bench_rows = "".join([
+            f"<tr><td>同期沪深300 涨幅（rqalpha 官方）</td><td>{_fmt_pct(_bench)}</td></tr>",
+            f"<tr><td>超额收益（总收益-基准）</td><td class='{'pos' if _excess > 0 else 'neg'}'>{_fmt_pct(_excess)}</td></tr>",
+        ])
+    else:
+        try:
+            import pandas as _pd
+            bench_csv = root / "qlib_data_src" / "sh000300.csv"
+            if bench_csv.exists() and bm:
+                _bs = cfg_backtest.get("start")
+                _be = cfg_backtest.get("end")
+                _b = _pd.read_csv(bench_csv)
+                _b = _b[(_b["date"] >= str(_bs)) & (_b["date"] <= str(_be))]
+                if len(_b) > 1:
+                    _bench = float(_b["close"].iloc[-1] / _b["close"].iloc[0] - 1)
+                    _excess = float(bm.get("total_returns", 0)) - _bench
+                    bench_rows = "".join([
+                        f"<tr><td>同期沪深300 涨幅（本地CSV）</td><td>{_fmt_pct(_bench)}</td></tr>",
+                        f"<tr><td>超额收益（总收益-基准）</td><td class='{'pos' if _excess > 0 else 'neg'}'>{_fmt_pct(_excess)}</td></tr>",
+                    ])
+        except Exception:
+            bench_rows = ""
 
     metric_rows = "".join([
         f"<tr><td>总收益</td><td class='{('pos' if (bm.get('total_returns') or 0) > 0 else 'neg')}'>{_fmt_pct(bm.get('total_returns'))}</td></tr>",

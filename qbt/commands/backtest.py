@@ -60,6 +60,11 @@ def backtest(
     slippage = float(cfg.get("backtest", {}).get("slippage", 0.0))
     participation = float(cfg.get("backtest", {}).get("participation", 0.05))
 
+    # 审计修复 A: 配置官方 benchmark（rqalpha analyser 计算基准收益与超额指标，
+    # 与 qlib 简化层 benchmark 同源）。SH000300 → 000300.XSHG
+    bench_sym = pool_cfg["index_sym"]
+    bench_rq = bench_sym[2:] + ".XSHG" if bench_sym.startswith("SH") else bench_sym[2:] + ".XSHE"
+
     config = {
         "base": {
             "data_bundle_path": resolve(bundle),
@@ -74,7 +79,7 @@ def backtest(
         "extra": {"log_level": "error"},
         "mod": {
             "sys_progress": {"enabled": False},
-            "sys_analyser": {"enabled": True},
+            "sys_analyser": {"enabled": True, "benchmark": bench_rq},
             # P1-2/3（对比审查）: 滑点/参与率用官方撮合（PriceRatioSlippage 夹涨跌停，
             # volume_limit 按当日累计），替代自研实现
             "sys_simulation": {
@@ -105,6 +110,7 @@ def backtest(
 
     info = (f"{s['total_returns']*100:+.2f}% 总收益 | 年化 {s['annualized_returns']*100:+.2f}% | "
             f"Sharpe {s['sharpe']:.2f} | MDD {s['max_drawdown']*100:.2f}% | {n_trades} 笔")
+    bench_ret = float(s.get("benchmark_total_returns", float("nan")))
     write_state(backtest_status="done", backtest_info=info,
                 backtest_metrics={
                     "total_returns": round(float(s["total_returns"]), 5),
@@ -115,4 +121,6 @@ def backtest(
                     "turnover": round(float(s["turnover"]), 3),
                     "trades": n_trades,
                     "capital": capital,
+                    "benchmark_returns": round(bench_ret, 5) if bench_ret == bench_ret else None,
+                    "excess_returns": round(float(s["total_returns"]) - bench_ret, 5) if bench_ret == bench_ret else None,
                 })

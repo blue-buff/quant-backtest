@@ -78,7 +78,8 @@ def build_plan(
         cal = sorted({pd.Timestamp(x) for x in source})
     rows: list[list[str]] = []
     for sig in signal_dates:
-        top = wide.loc[sig].dropna().sort_values(ascending=False).head(topk).index.tolist()
+        # 审计修复 B: mergesort 稳定排序（同分时保持原顺序，避免 topK 边界抖动）
+        top = wide.loc[sig].dropna().sort_values(ascending=False, kind="mergesort").head(topk).index.tolist()
         if not top:
             continue
         if execute_next_day:
@@ -117,7 +118,8 @@ def build_plan_with_buffer(
     rows: list[list[str]] = []
     held: set[str] = set()
     for sig in signal_dates:
-        scores = wide.loc[sig].dropna().sort_values(ascending=False)
+        # 审计修复 B: mergesort 稳定排序（同分时保持原顺序，避免 topK 边界抖动）
+        scores = wide.loc[sig].dropna().sort_values(ascending=False, kind="mergesort")
         if scores.empty:
             continue
         topk_syms = scores.head(topk).index.tolist()
