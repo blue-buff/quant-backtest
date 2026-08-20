@@ -1,0 +1,64 @@
+qlib_init:
+  provider_uri: ~/.qlib/qlib_data/cn_data_zz500
+  region: cn
+market: csi500
+benchmark: SH000905
+data_handler_config:
+  start_time: '2022-01-01'
+  end_time: '2026-08-14'
+  fit_start_time: '2022-01-01'
+  fit_end_time: '2024-06-30'
+  instruments: csi500
+task:
+  model:
+    class: LGBModel
+    module_path: qlib.contrib.model.gbdt
+    kwargs:
+      loss: mse
+      colsample_bytree: 0.8879
+      learning_rate: 0.2
+      subsample: 0.8789
+      lambda_l1: 205.6999
+      lambda_l2: 580.9768
+      max_depth: 8
+      num_leaves: 210
+      num_threads: 20
+      seed: 200
+      bagging_seed: 201
+      feature_fraction_seed: 202
+  dataset:
+    class: DatasetH
+    module_path: qlib.data.dataset
+    kwargs:
+      handler:
+        class: Alpha158
+        module_path: qlib.contrib.data.handler
+        kwargs:
+          start_time: '2021-06-01'
+          end_time: '2026-08-14'
+          fit_start_time: '2021-06-01'
+          fit_end_time: '2024-06-30'
+          instruments: csi500
+          label:
+          - Ref($close, -11)/Ref($close, -1) - 1
+      segments:
+        train:
+        - '2021-06-01'
+        - '2024-06-30'
+        valid:
+        - '2024-07-01'
+        - '2024-12-31'
+        test:
+        - '2025-01-01'
+        - '2026-08-14'
+  record:
+  - class: SignalRecord
+    module_path: qlib.workflow.record_temp
+    kwargs:
+      model: <MODEL>
+      dataset: <DATASET>
+  - class: SigAnaRecord
+    module_path: qlib.workflow.record_temp
+    kwargs:
+      ana_long_short: false
+      ann_scaler: 252
