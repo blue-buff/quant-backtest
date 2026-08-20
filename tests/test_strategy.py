@@ -64,6 +64,7 @@ def strategy():
     fake_apis.order = order
     fake_apis.order_target_percent = lambda *a, **k: None
     fake_apis.subscribe = lambda *a, **k: None
+    fake_apis.is_st_stock = lambda s: state.get('is_st_stock', lambda x: False)(s)
 
     class LimitOrder:
         def __init__(self, price):
@@ -189,3 +190,13 @@ def test_no_trade_outside_rebalance_day(strategy):
     ctx = FakeContext(plan={"2025-01-02": ["600000.XSHG"]}, now="2025-01-03")
     ns["handle_bar"](ctx, _bars(state))
     assert state["orders"] == []
+
+# P0-1（对比审查）: ST 标的从目标列表排除，不买入
+def test_st_stock_excluded(strategy):
+    ns, state = strategy
+    state["is_st_stock"] = lambda s: s == "600519.XSHG"
+    ctx = FakeContext(plan={"2025-01-02": ["600519.XSHG", "600000.XSHG"]})
+    ns['handle_bar'](ctx, _bars(state))
+    orders = _orders_by_symbol(state)
+    assert "600519.XSHG" not in orders
+    assert "600000.XSHG" in orders

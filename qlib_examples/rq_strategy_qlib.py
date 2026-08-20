@@ -132,6 +132,8 @@ def handle_bar(context, bar_dict):
     if today not in context.plan:
         return
     target = set(context.plan[today])
+    # P0-1（代码对比审查）: 排除 ST（风险警示股，机构禁投）
+    target = {s for s in target if not is_st_stock(s)}
 
     # 卖出不在目标列表的持仓（P1-3: 跌出 buffer 的才不在目标列表）
     for order_book_id in list(context.portfolio.positions.keys()):

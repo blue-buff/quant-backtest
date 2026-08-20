@@ -4,7 +4,7 @@ from pathlib import Path
 
 import typer
 
-from qbt.config import project_root
+from qbt.config import load_config, project_root
 from qbt.state import read_state, write_state
 
 _CSS = """
@@ -34,6 +34,7 @@ def report(
 
     root = project_root()
     out_path = root / "results" / "report.html" if out is None else Path(out)
+    cfg_backtest = load_config().get("backtest", {})
 
     tm = st.get("train_metrics", {})
     bm = st.get("backtest_metrics", {})
@@ -64,6 +65,26 @@ def report(
     rows.append(f"<tr><td>报告</td><td>done</td><td>{out_path.name}</td></tr>")
 
     ic_html = f"<tr><td>IC / ICIR</td><td>{tm.get('ic', '—')} / {tm.get('icir', '—')}</td></tr>" if tm else ""
+    # P1-1（代码对比审查）: 基准对比（同期沪深300 收益与超额）
+    bench_rows = ""
+    try:
+        import pandas as _pd
+        bench_csv = root / "qlib_data_src" / "sh000300.csv"
+        if bench_csv.exists() and bm:
+            _bs = cfg_backtest.get("start")
+            _be = cfg_backtest.get("end")
+            _b = _pd.read_csv(bench_csv)
+            _b = _b[(_b["date"] >= str(_bs)) & (_b["date"] <= str(_be))]
+            if len(_b) > 1:
+                _bench = float(_b["close"].iloc[-1] / _b["close"].iloc[0] - 1)
+                _excess = float(bm.get("total_returns", 0)) - _bench
+                bench_rows = "".join([
+                    f"<tr><td>同期沪深300 涨幅</td><td>{_fmt_pct(_bench)}</td></tr>",
+                    f"<tr><td>超额收益（总收益-基准）</td><td class='{'pos' if _excess > 0 else 'neg'}'>{_fmt_pct(_excess)}</td></tr>",
+                ])
+    except Exception:
+        bench_rows = ""
+
     metric_rows = "".join([
         f"<tr><td>总收益</td><td class='{('pos' if (bm.get('total_returns') or 0) > 0 else 'neg')}'>{_fmt_pct(bm.get('total_returns'))}</td></tr>",
         f"<tr><td>年化收益</td><td class='{('pos' if (bm.get('annualized_returns') or 0) > 0 else 'neg')}'>{_fmt_pct(bm.get('annualized_returns'))}</td></tr>",
@@ -92,7 +113,7 @@ def report(
 <tr><td>模型 / 股票池</td><td>{tm.get('model', '—')} / {tm.get('pool', '—')}</td></tr></table>
 
 <h2>四、真实规则回测（rqalpha：T+1/涨跌停/印花税/100股整数倍）</h2>
-<table><tr><th>指标</th><th>数值</th></tr>{metric_rows}</table>
+<table><tr><th>指标</th><th>数值</th></tr>{metric_rows}{bench_rows}</table>
 
 <div class="note"><b>风险提示：</b>回测≠实盘（未计滑点/冲击成本/停牌锁定）；成分股为当前快照，含幸存者偏差；
 超额随时间/模型/股票池均可能衰减。数据口径与复现步骤见项目 README。</div>

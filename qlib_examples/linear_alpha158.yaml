@@ -29,6 +29,7 @@ port_analysis_config: &id002
     class: TopkDropoutStrategy
     kwargs:
       n_drop: 5
+      only_tradable: true
       signal: <PRED>
       topk: 50
     module_path: qlib.contrib.strategy
