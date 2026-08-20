@@ -9,22 +9,22 @@ th{background:#1d2640;color:#8b95ab;padding:9px 12px;text-align:left}td{padding:
 .note{background:#171e2e;border:1px dashed #2a3550;border-radius:8px;padding:12px 16px;font-size:12.5px;line-height:1.8;color:#8b95ab;margin-top:24px}
 </style></head><body>
 <h1>📊 qbt 量化回测报告</h1>
-<div class="dim">生成时间：2026-08-20 02:12:59（quant）</div>
+<div class="dim">生成时间：2026-08-20 10:47:36（quant）</div>
 
 <h2>一、流水线状态</h2>
-<table><tr><th>阶段</th><th>状态</th><th>信息</th></tr><tr><td>数据导出</td><td>done</td><td>沪深300 已转 qlib 格式</td></tr><tr><td>模型训练</td><td>done</td><td>lgb IC=0.0012529839757700958 ICIR=0.010943061260979494 | 超额年化=2.4087432814513794% IR=0.30120633680436487 MDD=-0.12047853294797274</td></tr><tr><td>调仓计划</td><td>done</td><td>19 个月 × top50（N=10）（rebalance_plan.csv）</td></tr><tr><td>真实规则回测</td><td>done</td><td>+34.83% 总收益 | 年化 +21.79% | Sharpe 1.47 | MDD 10.66% | 1274 笔</td></tr><tr><td>报告</td><td>done</td><td>report.html</td></tr></table>
+<table><tr><th>阶段</th><th>状态</th><th>信息</th></tr><tr><td>数据导出</td><td>done</td><td>沪深300 已转 qlib 格式</td></tr><tr><td>模型训练</td><td>done</td><td>lgb IC=-0.006467002946092434 ICIR=-0.04090846522958418 | 超额年化=-2.2132903053396418% IR=-0.21351889896274331 MDD=-0.24529227454486793</td></tr><tr><td>调仓计划</td><td>done</td><td>20 个月 × top50（N=10）（rebalance_plan.csv）</td></tr><tr><td>真实规则回测</td><td>done</td><td>+19.14% 总收益 | 年化 +12.24% | Sharpe 0.88 | MDD 7.73% | 1304 笔</td></tr><tr><td>报告</td><td>done</td><td>report.html</td></tr></table>
 
 <h2>二、数据概览</h2>
 <table><tr><th>项目</th><th>内容</th></tr><tr><td>数据来源</td><td>sina（后复权 + 真实 factor + turn）</td></tr><tr><td>股票数 / CSV 文件</td><td>270 / 271</td></tr><tr><td>日期区间</td><td>2023-01-01 ~ 2026-08-15</td></tr><tr><td>字段口径</td><td>v2（P2-3 后复权 / P2-5 turn）</td></tr></table>
 
 <h2>三、模型预测力（简化规则，含成本）</h2>
-<table><tr><td>IC / ICIR</td><td>0.0012529839757700958 / 0.010943061260979494</td></tr><tr><td>超额年化（含成本）</td><td>+2.41%</td></tr>
-<tr><td>超额 IR</td><td>0.30120633680436487</td></tr>
-<tr><td>超额回撤</td><td>-12.05%</td></tr>
+<table><tr><td>IC / ICIR</td><td>-0.006467002946092434 / -0.04090846522958418</td></tr><tr><td>超额年化（含成本）</td><td>-2.21%</td></tr>
+<tr><td>超额 IR</td><td>-0.21351889896274331</td></tr>
+<tr><td>超额回撤</td><td>-24.53%</td></tr>
 <tr><td>模型 / 股票池</td><td>lgb / hs300</td></tr></table>
 
 <h2>四、真实规则回测（rqalpha：T+1/涨跌停/印花税/100股整数倍）</h2>
-<table><tr><th>指标</th><th>数值</th></tr><tr><td>总收益</td><td class='pos'>+34.83%</td></tr><tr><td>年化收益</td><td class='pos'>+21.79%</td></tr><tr><td>最大回撤</td><td>+10.66%</td></tr><tr><td>Sharpe</td><td>1.4722</td></tr><tr><td>胜率 / 换手</td><td>+54.19% / 12.595 倍</td></tr><tr><td>交易笔数</td><td>1274</td></tr><tr><td>同期沪深300 涨幅</td><td>+22.13%</td></tr><tr><td>超额收益（总收益-基准）</td><td class='pos'>+12.70%</td></tr></table>
+<table><tr><th>指标</th><th>数值</th></tr><tr><td>总收益</td><td class='pos'>+19.14%</td></tr><tr><td>年化收益</td><td class='pos'>+12.25%</td></tr><tr><td>最大回撤</td><td>+7.73%</td></tr><tr><td>Sharpe</td><td>0.8813</td></tr><tr><td>胜率 / 换手</td><td>+53.93% / 12.946 倍</td></tr><tr><td>交易笔数</td><td>1304</td></tr><tr><td>同期沪深300 涨幅</td><td>+22.13%</td></tr><tr><td>超额收益（总收益-基准）</td><td class='neg'>-2.99%</td></tr></table>
 
 <div class="note"><b>风险提示：</b>回测≠实盘（未计滑点/冲击成本/停牌锁定）；成分股为当前快照，含幸存者偏差；
 超额随时间/模型/股票池均可能衰减。数据口径与复现步骤见项目 README。</div>

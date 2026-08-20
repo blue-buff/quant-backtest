@@ -5,6 +5,18 @@ data_handler_config: &id001
   fit_end_time: 2024-06-30
   fit_start_time: 2023-01-01
   instruments: csi300
+  learn_processors:
+    - class: DropnaLabel
+      module_path: qlib.data.dataset.processor
+    - class: RobustZScoreNorm
+      module_path: qlib.data.dataset.processor
+    - class: DropnaProcessor
+      module_path: qlib.data.dataset.processor
+  infer_processors:
+    - class: RobustZScoreNorm
+      module_path: qlib.data.dataset.processor
+    - class: DropnaProcessor
+      module_path: qlib.data.dataset.processor
   start_time: 2023-01-01
 market: csi300
 model:

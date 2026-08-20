@@ -5,13 +5,13 @@ OPTIMIZATION.md 修复项：
   仍在前 K+N 的留存持仓 → 继续持有（计划由 planlib.build_plan_with_buffer 生成）
 - P2-1 topping-up：留存持仓每次调仓也调回目标权重（不再放任权重漂移）
 - P2-4/A4 停牌/涨跌停重试：买入未成交进入重试队列，非调仓日重试至 N 天
-- A3 滑点与参与率：买入限价上浮/卖出限价下浮；订单量不超过当日成交量参与率
+- A3（P1-2/3 对比审查）: 滑点与参与率改由官方 sys_simulation 配置
+  （PriceRatioSlippage 夹涨跌停；volume_limit 按当日累计），策略不再自研
 
 环境变量（qbt backtest 自动注入，均可配）:
   QBT_PLAN_FILE      调仓计划 CSV 路径（rqalpha exec 加载，__file__ 不可靠）
-  QBT_SLIPPAGE       滑点比例（默认 0）
-  QBT_PARTICIPATION  单日成交量参与率上限（默认 0.05 = 5%）
   QBT_RETRY_DAYS     未成交买单重试天数上限（默认 2）
+  滑点/参与率见 qbt.yaml backtest.slippage / backtest.participation（官方撮合生效）
 """
 import os
 
@@ -26,25 +26,6 @@ def target_quantity(portfolio_value, weight, price):
     if price is None or price <= 0 or portfolio_value is None or weight is None:
         return 0
     return int(portfolio_value * weight / price / 100) * 100
-
-
-def participation_capped(quantity, volume, participation):
-    """A3: 订单量不超过当日成交量 × participation（默认 5%）"""
-    if volume is None or volume <= 0 or participation is None or participation <= 0:
-        return quantity
-    cap = int(volume * participation / 100) * 100
-    return min(quantity, max(cap, 0))
-
-
-def slippage_price(price, slippage, side):
-    """A3: 买入上浮、卖出下浮"""
-    if price is None:
-        return price
-    if side == "buy":
-        return price * (1 + slippage)
-    if side == "sell":
-        return price * (1 - slippage)
-    return price
 
 
 # ---------- 策略主体 ----------
@@ -63,8 +44,7 @@ def init(context):
         subscribe(s)
     # P2-4/A4: sym -> [目标权重, 剩余重试天数]
     context.pending_buys = {}
-    context.slippage = float(os.environ.get("QBT_SLIPPAGE", "0.0"))
-    context.participation = float(os.environ.get("QBT_PARTICIPATION", "0.05"))
+    # P1-2/3（对比审查）: 滑点与参与率由官方 sys_simulation 配置，策略不再自研
     context.retry_days = int(os.environ.get("QBT_RETRY_DAYS", "2"))
     context.logged = set()
 
@@ -82,20 +62,17 @@ def _buy_to_weight(context, bar_dict, symbol, weight):
         return False
     if bar.close is None or bar.close <= 0:
         return False
-    price = slippage_price(bar.close, context.slippage, "buy")
-    qty = target_quantity(context.portfolio.total_value, weight, price)
+    # P1-2/3: 挂 close 限价单；滑点与参与率由官方 sys_simulation 撮合处理
+    qty = target_quantity(context.portfolio.total_value, weight, bar.close)
     qty -= get_position(symbol).quantity or 0  # P2-1: 补差
     if qty <= 0:
         return False
-    qty = participation_capped(qty, bar.volume, context.participation)
-    if qty <= 0:
-        return False
-    order(symbol, qty, style=LimitOrder(round(price, 3)))
+    order(symbol, qty, style=LimitOrder(round(bar.close, 3)))
     return True
 
 
 def _sell_all(context, bar_dict, symbol):
-    """清仓卖出（限价下浮，A3）"""
+    """清仓卖出（挂 close 限价单；滑点由官方撮合处理）"""
     pos = get_position(symbol)
     if pos.quantity <= 0:
         return
@@ -105,8 +82,7 @@ def _sell_all(context, bar_dict, symbol):
         return
     if bar.close is None or bar.close <= 0:
         return
-    price = slippage_price(bar.close, context.slippage, "sell")
-    order(symbol, -pos.quantity, style=LimitOrder(round(price, 3)))
+    order(symbol, -pos.quantity, style=LimitOrder(round(bar.close, 3)))
 
 
 def _retry_pending(context, bar_dict):
@@ -153,6 +129,4 @@ def handle_bar(context, bar_dict):
 
     if today not in context.logged:
         context.logged.add(today)
-        print(f"[调仓] {today} 目标 {len(target)} 只 | "
-              f"参与率 {context.participation:.0%} 滑点 {context.slippage:.2%} "
-              f"重试 {context.retry_days} 天")
+        print(f"[调仓] {today} 目标 {len(target)} 只 | 重试 {context.retry_days} 天")

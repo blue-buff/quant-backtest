@@ -55,9 +55,10 @@ def backtest(
 
     # rqalpha 用 exec 加载策略文件，参数经环境变量传入
     os.environ["QBT_PLAN_FILE"] = str(plan_file)
-    os.environ["QBT_SLIPPAGE"] = str(cfg.get("backtest", {}).get("slippage", 0.0))
-    os.environ["QBT_PARTICIPATION"] = str(cfg.get("backtest", {}).get("participation", 0.05))
     os.environ["QBT_RETRY_DAYS"] = str(cfg.get("backtest", {}).get("retry_days", 2))
+
+    slippage = float(cfg.get("backtest", {}).get("slippage", 0.0))
+    participation = float(cfg.get("backtest", {}).get("participation", 0.05))
 
     config = {
         "base": {
@@ -71,11 +72,23 @@ def backtest(
             "capital_gain_tax_rate": 0,  # A股无资本利得税，显式配置消除 rqalpha 警告
         },
         "extra": {"log_level": "error"},
-        "mod": {"sys_progress": {"enabled": False}, "sys_analyser": {"enabled": True}},
+        "mod": {
+            "sys_progress": {"enabled": False},
+            "sys_analyser": {"enabled": True},
+            # P1-2/3（对比审查）: 滑点/参与率用官方撮合（PriceRatioSlippage 夹涨跌停，
+            # volume_limit 按当日累计），替代自研实现
+            "sys_simulation": {
+                "enabled": True,
+                "slippage_model": "PriceRatioSlippage",
+                "slippage": slippage,
+                "volume_limit": True,
+                "volume_percent": participation,
+            },
+        },
     }
     typer.echo(f"真实规则回测: {start} ~ {end}，本金 {capital:,.0f}，计划 {plan_file.name}")
-    typer.echo(f"   执行参数: 滑点 {os.environ['QBT_SLIPPAGE']} 参与率 {os.environ['QBT_PARTICIPATION']} "
-               f"重试 {os.environ['QBT_RETRY_DAYS']} 天（A3/P2-4）")
+    typer.echo(f"   执行参数: 滑点 {slippage} 参与率 {participation} "
+               f"重试 {os.environ['QBT_RETRY_DAYS']} 天（官方 sys_simulation / P2-4）")
     write_state(backtest_status="running", backtest_info=f"{start}~{end} 回测中")
     results = run(config)
     analyser = results["sys_analyser"]

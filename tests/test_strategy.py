@@ -101,18 +101,8 @@ def test_target_quantity_100_lot(strategy):
     assert ns["target_quantity"](None, 0.5, 10) == 0
 
 
-def test_participation_capped(strategy):
-    ns, _ = strategy
-    assert ns["participation_capped"](200_000, 1_000_000, 0.05) == 50000
-    assert ns["participation_capped"](20_000, 1_000_000, 0.05) == 20000  # 不超限
-    assert ns["participation_capped"](20_000, None, 0.05) == 20000  # 无成交量不限制
-
-
-def test_slippage_price(strategy):
-    ns, _ = strategy
-    assert ns["slippage_price"](10.0, 0.001, "buy") == pytest.approx(10.01)
-    assert ns["slippage_price"](10.0, 0.001, "sell") == pytest.approx(9.99)
-    assert ns["slippage_price"](10.0, 0.0, "buy") == 10.0
+# P1-2/3（对比审查）: 滑点与参与率已改由官方 sys_simulation 配置，
+# participation_capped / slippage_price 自研实现已删除
 
 
 # ---------- 策略行为 ----------
@@ -135,15 +125,6 @@ def test_handle_bar_buy_sell_and_topping_up(strategy):
     # 新买的 600000 进入重试队列，留存 600036 不进
     assert "600000.XSHG" in ctx.pending_buys
     assert "600036.XSHG" not in ctx.pending_buys
-
-
-def test_participation_cap_applied(strategy):
-    """A3: 成交量很小 → 订单量被参与率上限截断（volume 10000 × 5% = 500 股）"""
-    ns, state = strategy
-    state["bars"]["600000.XSHG"] = FakeBar(close=10.0, volume=10_000)
-    ctx = FakeContext(plan={"2025-01-02": ["600000.XSHG"]})
-    ns["handle_bar"](ctx, _bars(state))
-    assert _orders_by_symbol(state)["600000.XSHG"]["quantity"] == 500
 
 
 def test_pending_retry_until_filled(strategy):
