@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><title>qbt 回测报告</title>
+<style>
+body{background:#0f1420;color:#e8ecf4;font-family:"Microsoft YaHei",sans-serif;padding:32px 20px;max-width:960px;margin:0 auto}
+h1{font-size:24px}h2{font-size:17px;margin-top:28px;border-left:4px solid #60a5fa;padding-left:10px}
+table{width:100%;border-collapse:collapse;background:#171e2e;font-size:13.5px;border-radius:8px;overflow:hidden}
+th{background:#1d2640;color:#8b95ab;padding:9px 12px;text-align:left}td{padding:8px 12px;border-top:1px solid #2a3550}
+.pos{color:#34d399}.neg{color:#f87171}.dim{color:#8b95ab;font-size:12px}
+.note{background:#171e2e;border:1px dashed #2a3550;border-radius:8px;padding:12px 16px;font-size:12.5px;line-height:1.8;color:#8b95ab;margin-top:24px}
+</style></head><body>
+<h1>📊 qbt 量化回测报告</h1>
+<div class="dim">生成时间：2026-08-19 17:45:09（quant）</div>
+
+<h2>一、流水线状态</h2>
+<table><tr><th>阶段</th><th>状态</th><th>信息</th></tr><tr><td>数据导出</td><td>done</td><td>沪深300 已转 qlib 格式</td></tr><tr><td>模型训练</td><td>done</td><td>lgb IC=0.0012529839757700958 ICIR=0.010943061260979494 | 超额年化=2.4087432814514167% IR=0.30120633680436953 MDD=-0.12047853294797208</td></tr><tr><td>调仓计划</td><td>done</td><td>19 个月 × top50（N=10）（rebalance_plan.csv）</td></tr><tr><td>真实规则回测</td><td>done</td><td>+34.84% 总收益 | 年化 +21.80% | Sharpe 1.47 | MDD 10.65% | 1274 笔</td></tr><tr><td>报告</td><td>—</td><td></td></tr></table>
+
+<h2>二、数据概览</h2>
+<table><tr><th>项目</th><th>内容</th></tr><tr><td>数据来源</td><td>sina（后复权 + 真实 factor + turn）</td></tr><tr><td>股票数 / CSV 文件</td><td>270 / 271</td></tr><tr><td>日期区间</td><td>2023-01-01 ~ 2026-08-15</td></tr><tr><td>字段口径</td><td>v2（P2-3 后复权 / P2-5 turn）</td></tr></table>
+
+<h2>三、模型预测力（简化规则，含成本）</h2>
+<table><tr><td>IC / ICIR</td><td>0.0012529839757700958 / 0.010943061260979494</td></tr><tr><td>超额年化（含成本）</td><td>+2.41%</td></tr>
+<tr><td>超额 IR</td><td>0.30120633680436953</td></tr>
+<tr><td>超额回撤</td><td>-12.05%</td></tr>
+<tr><td>模型 / 股票池</td><td>lgb / hs300</td></tr></table>
+
+<h2>四、真实规则回测（rqalpha：T+1/涨跌停/印花税/100股整数倍）</h2>
+<table><tr><th>指标</th><th>数值</th></tr><tr><td>总收益</td><td class='pos'>+34.84%</td></tr><tr><td>年化收益</td><td class='pos'>+21.80%</td></tr><tr><td>最大回撤</td><td>+10.66%</td></tr><tr><td>Sharpe</td><td>1.4725</td></tr><tr><td>胜率 / 换手</td><td>+54.19% / 12.594 倍</td></tr><tr><td>交易笔数</td><td>1274</td></tr></table>
+
+<div class="note"><b>风险提示：</b>回测≠实盘（未计滑点/冲击成本/停牌锁定）；成分股为当前快照，含幸存者偏差；
+超额随时间/模型/股票池均可能衰减。数据口径与复现步骤见项目 README。</div>
+</body></html>
