@@ -1,0 +1,102 @@
+{
+  "all10d_seed100": {
+    "best_iter": 3,
+    "eval": {
+      "all": {
+        "n_days": 381,
+        "rankic_mean": 0.0805011079300621,
+        "rankic_ir": 0.6449686885547086
+      },
+      "csi300_subset": {
+        "n_days": 381,
+        "rankic_mean": 0.036957907863258734,
+        "rankic_ir": 0.21648031207606994
+      },
+      "csi500_subset": {
+        "n_days": 381,
+        "rankic_mean": 0.03713553008971138,
+        "rankic_ir": 0.2266012403088736
+      }
+    }
+  },
+  "all10d_seed200": {
+    "best_iter": 4,
+    "eval": {
+      "all": {
+        "n_days": 381,
+        "rankic_mean": 0.08680130885693861,
+        "rankic_ir": 0.6748961828012745
+      },
+      "csi300_subset": {
+        "n_days": 381,
+        "rankic_mean": 0.03646669775842686,
+        "rankic_ir": 0.20795084262836636
+      },
+      "csi500_subset": {
+        "n_days": 381,
+        "rankic_mean": 0.04284036394608184,
+        "rankic_ir": 0.25729960821168263
+      }
+    }
+  },
+  "all10d_weighted": {
+    "best_iter": 5,
+    "eval": {
+      "all": {
+        "n_days": 381,
+        "rankic_mean": 0.07982946424421311,
+        "rankic_ir": 0.7539261580004173
+      },
+      "csi300_subset": {
+        "n_days": 381,
+        "rankic_mean": 0.028408499056037758,
+        "rankic_ir": 0.19885485525426916
+      },
+      "csi500_subset": {
+        "n_days": 381,
+        "rankic_mean": 0.034290131782144746,
+        "rankic_ir": 0.2523222893591945
+      }
+    }
+  },
+  "all10d_ranker": {
+    "best_iter": 70,
+    "eval": {
+      "all": {
+        "n_days": 381,
+        "rankic_mean": -0.05552915180759286,
+        "rankic_ir": -0.34583376326106485
+      },
+      "csi300_subset": {
+        "n_days": 381,
+        "rankic_mean": -0.020270973115583547,
+        "rankic_ir": -0.09886966290779091
+      },
+      "csi500_subset": {
+        "n_days": 381,
+        "rankic_mean": -0.020280203563396187,
+        "rankic_ir": -0.09812431797541012
+      }
+    }
+  },
+  "all20d_seed42": {
+    "best_iter": 2,
+    "eval": {
+      "all": {
+        "n_days": 371,
+        "rankic_mean": 0.09260506097195323,
+        "rankic_ir": 0.6692738811090908
+      },
+      "csi300_subset": {
+        "n_days": 371,
+        "rankic_mean": 0.049855155880444854,
+        "rankic_ir": 0.27650339159919024
+      },
+      "csi500_subset": {
+        "n_days": 371,
+        "rankic_mean": 0.04037306087889128,
+        "rankic_ir": 0.23127478770747564
+      }
+    }
+  }
+}
