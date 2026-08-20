@@ -1,0 +1,132 @@
+qlib_init:
+  provider_uri: ~/.qlib/qlib_data/cn_data
+  region: cn
+market: csi300
+benchmark: SH000300
+data_handler_config:
+  start_time: '2022-01-01'
+  end_time: '2026-08-14'
+  fit_start_time: '2022-01-01'
+  fit_end_time: '2024-06-30'
+  instruments: csi300
+task:
+  model:
+    class: LGBModel
+    module_path: qlib.contrib.model.gbdt
+    kwargs:
+      loss: mse
+      colsample_bytree: 0.8879
+      learning_rate: 0.2
+      subsample: 0.8789
+      lambda_l1: 205.6999
+      lambda_l2: 580.9768
+      max_depth: 8
+      num_leaves: 210
+      num_threads: 20
+  dataset:
+    class: DatasetH
+    module_path: qlib.data.dataset
+    kwargs:
+      handler:
+        class: Alpha158
+        module_path: qlib.contrib.data.handler
+        kwargs:
+          start_time: '2021-06-01'
+          end_time: '2026-08-14'
+          fit_start_time: '2021-06-01'
+          fit_end_time: '2024-06-30'
+          instruments: csi300
+          label:
+          - Ref($close, -11)/Ref($close, -1) - 1
+          learn_processors:
+          - class: DropnaLabel
+            module_path: qlib.data.dataset.processor
+          - class: CSZScoreNorm
+            module_path: qlib.data.dataset.processor
+            kwargs:
+              fields_group: label
+          - &id001
+            class: FilterCol
+            module_path: qlib.data.dataset.processor
+            kwargs:
+              fields_group: feature
+              col_list:
+              - STD20
+              - ROC60
+              - QTLU60
+              - ROC30
+              - STD10
+              - IMIN60
+              - STD60
+              - IMXD60
+              - CNTN60
+              - SUMP10
+              - CORD20
+              - SUMD10
+              - CNTD60
+              - WVMA30
+              - MAX60
+              - MIN60
+              - MAX20
+              - SUMN30
+              - VSTD60
+              - RSQR30
+              - ROC20
+              - CORD30
+              - WVMA10
+              - RESI60
+              - CORD60
+              - CORR60
+              - MIN5
+              - MIN10
+              - VSTD20
+              - IMIN30
+              - SUMD20
+              - IMAX20
+              - WVMA60
+              - SUMP60
+              - WVMA20
+              - RSQR20
+              - CORR20
+              - CNTP60
+              - IMAX60
+              - RSQR60
+              - KLEN
+              - CORR10
+              - BETA60
+              - BETA20
+              - STD30
+              - CNTN30
+              - RSV30
+              - SUMN20
+              - QTLD60
+              - WVMA5
+          infer_processors:
+          - class: ProcessInf
+            module_path: qlib.data.dataset.processor
+          - class: ZScoreNorm
+            module_path: qlib.data.dataset.processor
+          - class: Fillna
+            module_path: qlib.data.dataset.processor
+          - *id001
+      segments:
+        train:
+        - '2021-06-01'
+        - '2024-06-30'
+        valid:
+        - '2024-07-01'
+        - '2024-12-31'
+        test:
+        - '2025-01-01'
+        - '2026-08-14'
+  record:
+  - class: SignalRecord
+    module_path: qlib.workflow.record_temp
+    kwargs:
+      model: <MODEL>
+      dataset: <DATASET>
+  - class: SigAnaRecord
+    module_path: qlib.workflow.record_temp
+    kwargs:
+      ana_long_short: false
+      ann_scaler: 252

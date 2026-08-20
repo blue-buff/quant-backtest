@@ -28,8 +28,12 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 def load_pred_label(run_dirs, h=1):
-    """长表 pkl → 宽表（date × instrument）。多 run 时 score 平均，label 取第一个。"""
-    preds, label = [], None
+    """长表 pkl → 宽表（date × instrument）。
+
+    多 run 语义：每个 run 覆盖不同（或相同）日期段的预测，
+    score 按日期分组取均值（跳过 NaN），label 取全部窗口并集（重复日期保留最后一个）。
+    """
+    preds, labels = [], []
     for rd in run_dirs:
         rd = Path(rd)
         pred = pd.read_pickle(rd / "artifacts" / "pred.pkl")
@@ -37,9 +41,11 @@ def load_pred_label(run_dirs, h=1):
         if not isinstance(pred.index, pd.MultiIndex) or "instrument" not in pred.index.names:
             raise ValueError(f"pred.pkl 结构异常: {rd} index={pred.index.names}")
         preds.append(pred["score"].unstack("instrument"))
-        if label is None:
-            label = lab.iloc[:, 0].unstack("instrument")
-    score = sum(preds) / len(preds)
+        labels.append(lab.iloc[:, 0].unstack("instrument"))
+    cat_p = pd.concat(preds)
+    cat_l = pd.concat(labels)
+    score = cat_p.groupby(level=0).mean()  # 同日多 run 平均（同 run 同日不重复）
+    label = cat_l[~cat_l.index.duplicated(keep="last")]
     common_idx = score.index.intersection(label.index)
     common_cols = score.columns.intersection(label.columns)
     score = score.loc[common_idx, common_cols]
@@ -121,12 +127,20 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--run-dir", type=str, action="append", dest="run_dirs", required=True)
     ap.add_argument("--h", type=int, default=1, help="标签周期（重叠样本 stride）")
+    ap.add_argument("--universe-file", type=str, default=None,
+                    help="只评估该文件列出的股票（每行一个 SH600000 格式代码）")
     ap.add_argument("--name", type=str, default=None)
     ap.add_argument("--out-json", type=str, default=None)
     args = ap.parse_args()
     name = args.name or Path(args.run_dirs[0]).parent.name + "_" + Path(args.run_dirs[0]).name[:8]
 
     score, label = load_pred_label(args.run_dirs, args.h)
+    if args.universe_file:
+        codes = {ln.strip() for ln in open(args.universe_file, encoding="utf-8") if ln.strip()}
+        keep = [c for c in score.columns if c in codes]
+        score = score[keep]
+        label = label[keep]
+        print(f"universe 过滤后: {len(keep)} 只（{args.universe_file}）")
     print(f"样本矩阵: {score.shape[0]} 天 × {score.shape[1]} 只股票（run_dirs={len(args.run_dirs)}）")
 
     daily = per_day_stats(score, label)
