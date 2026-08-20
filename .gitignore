@@ -31,3 +31,6 @@ qlib_examples/rebalance_plan*.csv
 # 数据拉取日志
 fetch_sina.log
 fetch_sina.err
+
+# 误产生的嵌套解压目录
+qlib_examples/root/
