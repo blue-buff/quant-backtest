@@ -1,14 +1,16 @@
 qlib_init:
-  provider_uri: ~/.qlib/qlib_data/cn_data_zz500
+  provider_uri: ~/.qlib/qlib_data/cn_data
   region: cn
-market: csi500
-benchmark: SH000905
+market: csi300
+benchmark: SH000300
 data_handler_config:
   start_time: '2022-01-01'
   end_time: '2026-08-14'
   fit_start_time: '2022-01-01'
   fit_end_time: '2024-06-30'
-  instruments: csi500
+  instruments: csi300
+  label: &id001
+  - Ref($close, -11)/Ref($close, -1) - 1
 task:
   model:
     class: LGBModel
@@ -23,12 +25,9 @@ task:
       max_depth: 8
       num_leaves: 210
       num_threads: 20
-      boosting_type: dart
-      drop_rate: 0.1
-      skip_drop: 0.5
-      max_drop: 50
-      num_boost_round: 400
-      early_stopping_rounds: 30
+      seed: 100
+      bagging_seed: 101
+      feature_fraction_seed: 102
   dataset:
     class: DatasetH
     module_path: qlib.data.dataset
@@ -41,7 +40,8 @@ task:
           end_time: '2026-08-14'
           fit_start_time: '2022-01-01'
           fit_end_time: '2024-06-30'
-          instruments: csi500
+          instruments: csi300
+          label: *id001
       segments:
         train:
         - '2022-01-01'

@@ -38,6 +38,8 @@ def main():
     ap.add_argument("--yaml", required=True)
     ap.add_argument("--label-days", type=int, default=20)
     ap.add_argument("--ndcg", type=int, default=50)
+    ap.add_argument("--mode", default="rank", choices=["rank", "bin"],
+                    help="rank=lambdarank 排序学习；bin=每日截面 top/bottom 30% 二分类")
     ap.add_argument("--name", default="ranker")
     ap.add_argument("--num-leaves", type=int, default=128)
     ap.add_argument("--lr", type=float, default=0.05)
@@ -99,8 +101,25 @@ def main():
             out.append(g["yb"])
         return pd.concat(out)
 
-    y_tr = quantize_daily(y_tr)
-    y_va = quantize_daily(y_va)
+    def binarize_daily(y: pd.Series, keep=0.3) -> pd.Series:
+        """每日截面：top 30% = 1，bottom 30% = 0，中间丢弃（NaN）。"""
+        df_ = y.to_frame("y")
+        df_["dt"] = df_.index.get_level_values(0)
+        out = []
+        for dt, g in df_.groupby("dt"):
+            pct = g["y"].rank(pct=True)
+            g["yb"] = pd.NA
+            g.loc[pct >= 1 - keep, "yb"] = 1
+            g.loc[pct <= keep, "yb"] = 0
+            out.append(g["yb"].dropna())
+        return pd.concat(out)
+
+    if args.mode == "bin":
+        y_tr = binarize_daily(y_tr)
+        y_va = binarize_daily(y_va)
+    else:
+        y_tr = quantize_daily(y_tr)
+        y_va = quantize_daily(y_va)
     # 按日期排序（组连续性）
     X_tr = X_tr.sort_index()
     y_tr = y_tr.loc[X_tr.index]
@@ -113,26 +132,47 @@ def main():
     groups_va = va_dates.value_counts().sort_index().values
 
     import lightgbm as lgb
-    params = {
-        "objective": "lambdarank",
-        "metric": "ndcg",
-        "ndcg_eval_at": [args.ndcg],
-        "boosting_type": "gbdt",
-        "num_leaves": args.num_leaves,
-        "learning_rate": args.lr,
-        "feature_fraction": 0.8,
-        "bagging_fraction": 0.8,
-        "bagging_freq": 1,
-        "min_child_samples": 100,
-        "lambda_l1": 0.1,
-        "lambda_l2": 1.0,
-        "max_depth": -1,
-        "seed": args.seed,
-        "num_threads": 20,
-        "verbosity": -1,
-    }
-    d_tr = lgb.Dataset(X_tr, label=y_tr, group=groups_tr)
-    d_va = lgb.Dataset(X_va, label=y_va, group=groups_va, reference=d_tr)
+    if args.mode == "bin":
+        params = {
+            "objective": "binary",
+            "metric": "auc",
+            "boosting_type": "gbdt",
+            "num_leaves": args.num_leaves,
+            "learning_rate": args.lr,
+            "feature_fraction": 0.8,
+            "bagging_fraction": 0.8,
+            "bagging_freq": 1,
+            "min_child_samples": 100,
+            "lambda_l1": 0.1,
+            "lambda_l2": 1.0,
+            "max_depth": -1,
+            "seed": args.seed,
+            "num_threads": 20,
+            "verbosity": -1,
+        }
+        d_tr = lgb.Dataset(X_tr, label=y_tr)
+        d_va = lgb.Dataset(X_va, label=y_va, reference=d_tr)
+    else:
+        params = {
+            "objective": "lambdarank",
+            "metric": "ndcg",
+            "ndcg_eval_at": [args.ndcg],
+            "boosting_type": "gbdt",
+            "num_leaves": args.num_leaves,
+            "learning_rate": args.lr,
+            "feature_fraction": 0.8,
+            "bagging_fraction": 0.8,
+            "bagging_freq": 1,
+            "min_child_samples": 100,
+            "lambda_l1": 0.1,
+            "lambda_l2": 1.0,
+            "max_depth": -1,
+            "seed": args.seed,
+            "num_threads": 20,
+            "verbosity": -1,
+        }
+        d_tr = lgb.Dataset(X_tr, label=y_tr, group=groups_tr)
+        d_va = lgb.Dataset(X_va, label=y_va, group=groups_va, reference=d_tr)
     t0 = time.time()
     model = lgb.train(params, d_tr, num_boost_round=args.rounds,
                       valid_sets=[d_va],
