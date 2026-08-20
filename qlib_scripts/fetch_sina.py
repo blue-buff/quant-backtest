@@ -115,8 +115,8 @@ def main():
     # 断点续传：优先用指数完整成分列表；已下载且行数足够的跳过
     syms = []
     try:
-        cons = ak.index_stock_cons(symbol="000300" if args.pool == "hs300" else "000905")
-        codes = cons["品种代码"].astype(str).str.zfill(6)
+        cons = ak.index_stock_cons_sina(symbol="000300" if args.pool == "hs300" else "000905")
+        codes = cons["code"].astype(str).str.zfill(6)
 
         def _to_sym(c):
             if c.startswith(("6", "9")):
