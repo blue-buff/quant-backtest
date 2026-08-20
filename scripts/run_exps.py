@@ -72,9 +72,8 @@ def run_one(yaml_path: Path, name: str | None = None) -> dict:
     work_yaml = exp_dir / "work.yaml"
     work_yaml.write_text(yaml.safe_dump(cfg, sort_keys=False, allow_unicode=True), encoding="utf-8")
 
-    # 记录该实验名下已有 run 数，跑完后找新增的 run
-    before = set(p.name for p in (MLRUNS / exp_name).glob("*/meta.yaml")) if (MLRUNS / exp_name).exists() else set()
-
+    # mlflow 文件库目录名是数字 experiment_id，无法从实验名推断；
+    # 改为：跑完取全局最新 pred.pkl 的 run（与 qbt train 的 _newest_pred_path 同策略）
     t0 = time.time()
     env = dict(os.environ, MLFLOW_ALLOW_FILE_STORE="true")
     r = subprocess.run([sys.executable, "-m", "qlib.cli.run", str(work_yaml)],
@@ -84,10 +83,8 @@ def run_one(yaml_path: Path, name: str | None = None) -> dict:
     ok = r.returncode == 0
     took = time.time() - t0
 
-    # 找本次新增的 run
-    after = set(p.parent.name for p in (MLRUNS / exp_name).glob("*/meta.yaml")) if (MLRUNS / exp_name).exists() else set()
-    new_runs = sorted(after - before)
-    run_dir = (MLRUNS / exp_name / new_runs[-1]) if new_runs else None
+    cands = sorted(MLRUNS.glob("*/*/artifacts/pred.pkl"), key=lambda q: q.stat().st_mtime)
+    run_dir = cands[-1].parent.parent if cands else None
     metrics = read_metrics(run_dir) if run_dir else {}
     # 模型标签/标签配置摘要
     try:

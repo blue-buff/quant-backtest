@@ -28,16 +28,18 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 def load_pred_label(run_dirs, h=1):
+    """长表 pkl → 宽表（date × instrument）。多 run 时 score 平均，label 取第一个。"""
     preds, label = [], None
     for rd in run_dirs:
         rd = Path(rd)
         pred = pd.read_pickle(rd / "artifacts" / "pred.pkl")
         lab = pd.read_pickle(rd / "artifacts" / "label.pkl")
-        preds.append(pred)
+        if not isinstance(pred.index, pd.MultiIndex) or "instrument" not in pred.index.names:
+            raise ValueError(f"pred.pkl 结构异常: {rd} index={pred.index.names}")
+        preds.append(pred["score"].unstack("instrument"))
         if label is None:
-            label = lab
+            label = lab.iloc[:, 0].unstack("instrument")
     score = sum(preds) / len(preds)
-    # 对齐 index/columns
     common_idx = score.index.intersection(label.index)
     common_cols = score.columns.intersection(label.columns)
     score = score.loc[common_idx, common_cols]
@@ -66,35 +68,32 @@ def per_day_stats(score, label, min_n=20):
 
 
 def decile_monotonicity(score, label, q=10):
-    """每日截面按 score 分 q 档，平均 label；跨日取均值。"""
-    per_day = {}
-    for dt in score.index:
+    """每日截面按 score 百分位切固定 q 桶（桶 0=最低分，q-1=最高分），
+    平均 label 后跨日取均值。top_minus_bottom = 最高分桶 - 最低分桶。"""
+    mat = np.full((score.shape[0], q), np.nan)
+    n_ok = 0
+    for i, dt in enumerate(score.index):
         s = score.loc[dt].to_numpy(float)
         l = label.loc[dt].to_numpy(float)
         mask = np.isfinite(s) & np.isfinite(l)
         if mask.sum() < q * 3:
             continue
         s, l = s[mask], l[mask]
-        try:
-            qidx = pd.qcut(pd.Series(s), q, labels=False, duplicates="drop")
-        except ValueError:
-            continue
-        means = {}
-        for i in range(int(qidx.max()) + 1):
-            means[i] = float(np.mean(l[qidx == i]))
-        per_day[dt] = means
-    if not per_day:
+        pct = pd.Series(s).rank(pct=True).to_numpy()
+        bucket = np.minimum((pct * q).astype(int), q - 1)
+        for b in range(q):
+            if (bucket == b).sum() > 0:
+                mat[i, b] = np.mean(l[bucket == b])
+        n_ok += 1
+    if n_ok < 5:
         return None
-    nq = max(len(v) for v in per_day.values())
-    mat = np.full((len(per_day), nq), np.nan)
-    for i, dt in enumerate(per_day):
-        for k, v in per_day[dt].items():
-            mat[i, k] = v
     dec = np.nanmean(mat, axis=0)
-    spread = float(np.nanmean(mat[:, -1] - mat[:, 0]))
+    top_minus_bottom = float(dec[-1] - dec[0])
+    top_gt_bottom_days = float(np.nanmean(mat[:, -1] > mat[:, 0])) if n_ok else None
     mono, _ = stats.spearmanr(np.arange(len(dec)), dec)
-    return {"decile_means": [float(x) for x in dec], "top_minus_bottom": spread,
-            "monotonicity_spearman": float(mono)}
+    return {"decile_means": [float(x) for x in dec], "top_minus_bottom": top_minus_bottom,
+            "monotonicity_spearman": float(mono), "top_gt_bottom_day_frac": top_gt_bottom_days,
+            "n_days": int(n_ok)}
 
 
 def bootstrap_ci(x, n_boot=10000, seed=42):
@@ -120,7 +119,7 @@ def regime_table(daily, h=1):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--run-dir", type=str, action="append", required=True)
+    ap.add_argument("--run-dir", type=str, action="append", dest="run_dirs", required=True)
     ap.add_argument("--h", type=int, default=1, help="标签周期（重叠样本 stride）")
     ap.add_argument("--name", type=str, default=None)
     ap.add_argument("--out-json", type=str, default=None)

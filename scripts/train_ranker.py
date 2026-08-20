@@ -87,6 +87,20 @@ def main():
     X_tr, y_tr = df_tr[feats], df_tr["y"]
     X_va, y_va = df_va[feats], df_va["y"]
     X_te = df_te[feats]
+
+    def quantize_daily(y: pd.Series, n_buckets=20) -> pd.Series:
+        """每个日期截面内按排名切成 0..n_buckets-1 整数标签（lambdarank 需要整数）。"""
+        df_ = y.to_frame("y")
+        df_["dt"] = df_.index.get_level_values(0)
+        out = []
+        for dt, g in df_.groupby("dt"):
+            pct = g["y"].rank(pct=True)
+            g["yb"] = (pct * n_buckets).astype(int).clip(upper=n_buckets - 1)
+            out.append(g["yb"])
+        return pd.concat(out)
+
+    y_tr = quantize_daily(y_tr)
+    y_va = quantize_daily(y_va)
     # 按日期排序（组连续性）
     X_tr = X_tr.sort_index()
     y_tr = y_tr.loc[X_tr.index]
@@ -144,7 +158,7 @@ def main():
     (out / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(meta, ensure_ascii=False, indent=2))
 
-    # 直接计算测试段 RankIC
+    # 直接计算测试段 RankIC（原始连续标签）
     from scipy import stats
     ics = []
     for dt, g in pred.groupby(level=0):

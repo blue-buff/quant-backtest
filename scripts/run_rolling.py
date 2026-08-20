@@ -76,16 +76,14 @@ def run_window(base_cfg: dict, pool: str, fit_end: str, tag: str, wi: int):
     exp_dir = EXPS / wname
     exp_dir.mkdir(parents=True, exist_ok=True)
     (exp_dir / "work.yaml").write_text(yaml.safe_dump(cfg, sort_keys=False, allow_unicode=True), encoding="utf-8")
-    before = set(p.name for p in (MLRUNS / exp_name).glob("*/meta.yaml")) if (MLRUNS / exp_name).exists() else set()
     t0 = time.time()
     env = dict(os.environ, MLFLOW_ALLOW_FILE_STORE="true")
     r = subprocess.run([sys.executable, "-m", "qlib.cli.run", str(exp_dir / "work.yaml")],
                        capture_output=True, text=True, env=env, cwd=str(ROOT / "qlib_examples"))
     (exp_dir / "qrun.log").write_text((r.stdout or "") + (r.stderr or ""), encoding="utf-8")
     ok = r.returncode == 0
-    after = set(p.parent.name for p in (MLRUNS / exp_name).glob("*/meta.yaml")) if (MLRUNS / exp_name).exists() else set()
-    new_runs = sorted(after - before)
-    run_dir = (MLRUNS / exp_name / new_runs[-1]) if new_runs else None
+    cands = sorted(MLRUNS.glob("*/*/artifacts/pred.pkl"), key=lambda q: q.stat().st_mtime)
+    run_dir = cands[-1].parent.parent if cands else None
     m = read_metrics(run_dir) if run_dir else {}
     meta = {"window": wname, "fit_end": fit_end, "test": [valid_end, test_end],
             "ok": ok, "seconds": round(time.time() - t0, 1), "metrics": m,
