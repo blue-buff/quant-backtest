@@ -114,10 +114,18 @@ def main():
 
     syms = stock_symbols_from_dir(out)
     if not syms:
-        print("目录无旧 CSV，改用成分接口（index_stock_cons_csindex）")
-        cons = ak.index_stock_cons_csindex(symbol="000300" if args.pool == "hs300" else "000905")
-        syms = sorted(cons["成分券代码"].str.lower().str.replace("^sh|^sz", "sh|sz", regex=True).map(
-            lambda c: ("sh" if c.startswith("sh") else "sz") + c[2:]).tolist())
+        print("目录无旧 CSV，改用成分接口（index_stock_cons / sina）")
+        cons = ak.index_stock_cons(symbol="000300" if args.pool == "hs300" else "000905")
+        codes = cons["品种代码"].astype(str).str.zfill(6)
+
+        def _to_sym(c):
+            if c.startswith(("6", "9")):
+                return "sh" + c
+            if c.startswith(("4", "8")):
+                return "bj" + c
+            return "sz" + c
+
+        syms = sorted(_to_sym(c) for c in codes)
     if args.limit > 0:
         syms = syms[: args.limit]
     print(f"股票数: {len(syms)}（{syms[0]} ~ {syms[-1]}）")
