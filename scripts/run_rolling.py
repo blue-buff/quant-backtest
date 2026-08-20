@@ -111,7 +111,7 @@ def main():
     for i, fe in enumerate(fits):
         metas.append(run_window(base, args.pool, fe, args.tag, i))
     print("\n===== 全窗口完成，拼接评估 =====")
-    preds = [m["pred"] for m in metas if m.get("pred")]
+    preds = sorted(set(m["pred"] for m in metas if m.get("pred")))
     if preds:
         cmd = [sys.executable, str(ROOT / "scripts" / "eval_pred.py"), "--name", args.tag, "--h", str(args.eval_h)]
         for p in preds:
