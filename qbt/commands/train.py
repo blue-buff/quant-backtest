@@ -9,7 +9,7 @@ from pathlib import Path
 import typer
 import yaml
 
-from qbt.config import load_config, project_root
+from qbt.config import load_config, project_root, resolve
 from qbt.pools import get_pool
 from qbt.state import log_dir, write_state
 
@@ -99,6 +99,11 @@ def train(
 
     with open(yaml_path, encoding="utf-8") as f:
         c = yaml.safe_load(f)
+
+    # 1.5 数据目录统一：provider_uri 始终取配置的 qlib_dir（防硬编码偏差）
+    qlib_dir = resolve(cfg["train"]["qlib_dir"])
+    c.setdefault("qlib_init", {})["provider_uri"] = qlib_dir
+    typer.echo(f"qlib 数据目录: {qlib_dir}")
 
     # 2. 模型配置：⚠️ qlib 实际训练用 task.model（顶层 model 不生效）
     if model == "linear" or c.get("task", {}).get("model", {}).get("class") != MODELS[model]["class"]:

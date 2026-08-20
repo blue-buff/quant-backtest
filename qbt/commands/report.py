@@ -38,12 +38,30 @@ def report(
     tm = st.get("train_metrics", {})
     bm = st.get("backtest_metrics", {})
 
+    # 数据概览：优先读 fetch 缓存元数据（数据来源/数量/区间/字段口径）
+    import json as _json
+
+    data_rows = ""
+    meta_path = root / "qlib_data_src" / ".fetch_meta.json"
+    if meta_path.exists():
+        try:
+            m = _json.loads(meta_path.read_text(encoding="utf-8"))
+            n_csv = len(list((root / "qlib_data_src").glob("*.csv")))
+            data_rows = "".join([
+                f"<tr><td>数据来源</td><td>{m.get('source', '—')}（后复权 + 真实 factor + turn）</td></tr>",
+                f"<tr><td>股票数 / CSV 文件</td><td>{m.get('stocks', '—')} / {n_csv}</td></tr>",
+                f"<tr><td>日期区间</td><td>{m.get('start', '—')} ~ {m.get('end', '—')}</td></tr>",
+                f"<tr><td>字段口径</td><td>{m.get('fields_version', '—')}（P2-3 后复权 / P2-5 turn）</td></tr>",
+            ])
+        except Exception:  # noqa: BLE001
+            data_rows = ""
+
     rows = []
     rows.append(f"<tr><td>数据导出</td><td>{st.get('data_status', '—')}</td><td>{st.get('data_info', '')}</td></tr>")
     rows.append(f"<tr><td>模型训练</td><td>{st.get('train_status', '—')}</td><td>{st.get('train_info', '')}</td></tr>")
     rows.append(f"<tr><td>调仓计划</td><td>{st.get('plan_status', '—')}</td><td>{st.get('plan_info', '')}</td></tr>")
     rows.append(f"<tr><td>真实规则回测</td><td>{st.get('backtest_status', '—')}</td><td>{st.get('backtest_info', '')}</td></tr>")
-    rows.append(f"<tr><td>报告</td><td>{st.get('report_status', '—')}</td><td>{st.get('report_info', '')}</td></tr>")
+    rows.append(f"<tr><td>报告</td><td>done</td><td>{out_path.name}</td></tr>")
 
     ic_html = f"<tr><td>IC / ICIR</td><td>{tm.get('ic', '—')} / {tm.get('icir', '—')}</td></tr>" if tm else ""
     metric_rows = "".join([
@@ -64,13 +82,16 @@ def report(
 <h2>一、流水线状态</h2>
 <table><tr><th>阶段</th><th>状态</th><th>信息</th></tr>{''.join(rows)}</table>
 
-<h2>二、模型预测力（简化规则，含成本）</h2>
+<h2>二、数据概览</h2>
+<table><tr><th>项目</th><th>内容</th></tr>{data_rows or '<tr><td colspan="2" class="dim">无 fetch 缓存元数据（未记录数据来源）</td></tr>'}</table>
+
+<h2>三、模型预测力（简化规则，含成本）</h2>
 <table>{ic_html}<tr><td>超额年化（含成本）</td><td>{_fmt_pct(tm.get('excess_ann'))}</td></tr>
 <tr><td>超额 IR</td><td>{tm.get('excess_ir', '—')}</td></tr>
 <tr><td>超额回撤</td><td>{_fmt_pct(tm.get('excess_mdd'))}</td></tr>
 <tr><td>模型 / 股票池</td><td>{tm.get('model', '—')} / {tm.get('pool', '—')}</td></tr></table>
 
-<h2>三、真实规则回测（rqalpha：T+1/涨跌停/印花税/100股整数倍）</h2>
+<h2>四、真实规则回测（rqalpha：T+1/涨跌停/印花税/100股整数倍）</h2>
 <table><tr><th>指标</th><th>数值</th></tr>{metric_rows}</table>
 
 <div class="note"><b>风险提示：</b>回测≠实盘（未计滑点/冲击成本/停牌锁定）；成分股为当前快照，含幸存者偏差；
