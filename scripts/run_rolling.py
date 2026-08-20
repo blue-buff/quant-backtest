@@ -34,11 +34,14 @@ METRIC_FILES = ["IC", "ICIR", "Rank IC", "Rank ICIR", "l2.train", "l2.valid"]
 
 
 def next_quarter(d: str) -> str:
+    import calendar
     y, m, day = int(d[:4]), int(d[5:7]), int(d[8:10])
     m += 3
     if m > 12:
         m -= 12
         y += 1
+    last = calendar.monthrange(y, m)[1]
+    day = min(day, last)
     return f"{y:04d}-{m:02d}-{day:02d}"
 
 
