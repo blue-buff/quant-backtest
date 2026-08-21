@@ -36,9 +36,9 @@ docker exec -i -w /root/quant hermes-1679f5b2 python -m pipeline.queue status
 - 队列 = results/queue/jobs.db（sqlite 任务表）。三个命令：
 
 ~~~
-docker exec -i -w /root/quant hermes-1679f5b2 python -m pipeline.queue submit experiments/batches/xxx.json
-docker exec -i -w /root/quant hermes-1679f5b2 python -m pipeline.queue status --json
-docker exec -i -w /root/quant hermes-1679f5b2 python -m pipeline.queue run --batch xxx --once
+docker exec -i hermes-1679f5b2 sh -c 'cd /root/quant && python -m pipeline.queue submit experiments/batches/xxx.json'
+docker exec -i hermes-1679f5b2 sh -c 'cd /root/quant && python -m pipeline.queue status --json'
+docker exec -i hermes-1679f5b2 sh -c 'cd /root/quant && python -m pipeline.queue run --batch xxx --once'
 ~~~
 
 - 查台账：python -m pipeline.board（导出 results/board.csv）或
@@ -49,6 +49,20 @@ docker exec -i -w /root/quant hermes-1679f5b2 python -m pipeline.queue run --bat
   允许多变量变更，但必须写 changes 一句话说明；runner 默认 local。
 - 幂等：同 exp_id + 同 spec_hash 且已 done 的任务 submit 时自动跳过；
   --force 重跑需用户批准。失败任务 retry 命令只重跑 failed 且 attempts<3。
+- 故障排查三板斧（任务报错/卡死时）：
+  show <job_id>（一行看 error+日志尾部+事件链）/ events --since N（增量事件）/ heal（dispatcher 挂掉后对账，running->failed）。
+- 检查点（防漏失败，强制）：① 每次 run --once 排空返回后立刻 status --json；
+  ② 每回合开始时 events --since <上次看到的 id>；③ 修完代码重投前先 show 看错误原因；
+  重投 = 重新 submit（幂等，只补 failed 的）。
+- 卡死任务由 timeout_min 兜底：超时整组杀进程（无孤儿）；测试可用
+  QLAB_QUEUE_TIMEOUT_SECONDS 环境变量把超时压到秒级。
+- 通知机制（已上线，主机 notify_bridge.js）：
+  · 常驻运行：node notify_bridge.js --interval 15（日志 notify/bridge.log）；测试单次：--once；
+  · 任务失败 -> 自动 POST 到 DSH 会话（/api/session.prompt，mode=queue，agent 会被自动唤醒），
+    同时追加 D:\quant_backup\notify\inbox.jsonl 并弹 Windows toast 提醒人类；
+  · dispatcher 心跳失联超 5 分钟且有 running 任务 -> 自动 heal（任务按挂掉处理）+ 通知会话；
+  · 收到【QLab 队列通知】消息时按本节三板斧排查，修复后重新 submit；
+  · 会话 id 存在 D:\quant_backup\notify\session.txt，换新会话时要更新（否则通知找不到家）。
 - P1 完成前，真实训练仍用旧脚本 scripts/run_exps.py 跑，跑完用
   python -m pipeline.harness backfill 把结果补进台账（不重跑、不改数字）。
 

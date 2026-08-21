@@ -1,0 +1,9 @@
+{
+  "exp_id": "fail_001",
+  "base": {"note": "failure-path test base"},
+  "overrides": {},
+  "changes": "故意崩溃：测试失败事件链（非研究）",
+  "action": {"kind": "crash"},
+  "runner": "local",
+  "timeout_min": 5
+}

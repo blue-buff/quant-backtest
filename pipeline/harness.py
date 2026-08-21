@@ -90,6 +90,12 @@ def run(spec_path, job_id=None, batch_id=None):
         ef = Path(QLAB_ROOT / action["eval_file"])
         ev = json.loads(ef.read_text())
         run_id, exp, metrics = _log_eval(ev, tags, {"eval.json": str(ef)})
+    elif kind == "hang":
+        import time as _time
+        _time.sleep(float(action.get("seconds", 300)))
+        raise SystemExit("hang action ended without timeout (queue bug)")
+    elif kind == "crash":
+        raise ValueError("deterministic crash for failure-path testing")
     else:
         raise ValueError("unknown action kind: " + repr(kind))
     print("QLAB_RESULT " + json.dumps({"run_id": run_id, "exp_name": exp, "spec_hash": h}))
