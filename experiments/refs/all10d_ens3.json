@@ -1,0 +1,53 @@
+{
+  "ref_id": "all10d_ens3",
+  "note": "当前最佳已知基线（截至 2026-08-20）：全市场 Alpha158 + 10d 标签 + LightGBM 官方参数 + 3 种子集成。样本外 2025-01 ~ 2026-08。",
+  "universe": "all",
+  "data_version": "v3",
+  "dataset": {
+    "class": "DatasetH",
+    "handler": {
+      "class": "Alpha158",
+      "fit_start_time": "2021-06-01",
+      "fit_end_time": "2024-06-30",
+      "instruments": "all"
+    }
+  },
+  "label": {
+    "ref": "$close",
+    "shift": -11,
+    "horizon": 10,
+    "formula": "Ref($close,-11)/Ref($close,-1)-1"
+  },
+  "processors": {
+    "learn": [
+      {"class": "DropnaLabel"},
+      {"class": "CSZScoreNorm", "fields_group": "label"}
+    ],
+    "infer": [
+      {"class": "ProcessInf"},
+      {"class": "ZScoreNorm"},
+      {"class": "Fillna"}
+    ]
+  },
+  "model": {
+    "class": "LGBModel",
+    "loss": "mse",
+    "num_leaves": 210,
+    "learning_rate": 0.2,
+    "max_depth": 8,
+    "colsample_bytree": 0.8879,
+    "subsample": 0.8789,
+    "lambda_l1": 205.6999,
+    "lambda_l2": 580.9768
+  },
+  "seeds": [42, 100, 200],
+  "ensemble": "rank_mean(seeds)",
+  "evidence": {
+    "rankic_mean": 0.0859,
+    "n_days": 381,
+    "bootstrap_p_le0": 0.0,
+    "hs300_rankic": 0.0361,
+    "zz500_rankic": 0.0408,
+    "eval_file": "results/eval/all10d_ens3_all.json"
+  }
+}

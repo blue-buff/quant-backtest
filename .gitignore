@@ -34,3 +34,12 @@ fetch_sina.err
 
 # 误产生的嵌套解压目录
 qlib_examples/root/
+qlib_data_src_all/
+qlib_data_src_old23/
+qlib_data_src_zz500_old/
+mlruns/
+mlflow-server/
+cache/
+results/queue/
+__pycache__/
+*.pyc

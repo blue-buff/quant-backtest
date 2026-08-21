@@ -1,0 +1,143 @@
+"""Execute one spec action and write the result into the ledger (MLflow)."""
+import argparse, json, subprocess
+from pathlib import Path
+from . import QLAB_ROOT, DATA_VERSION
+from . import registry, spec as specmod
+
+def git_commit():
+    try:
+        out = subprocess.run(["git", "rev-parse", "HEAD"], cwd=str(QLAB_ROOT),
+                             capture_output=True, text=True)
+        return out.stdout.strip()[:8]
+    except Exception:
+        return ""
+
+def _log_legacy(meta, tags, artifacts, fallback_name=""):
+    name = meta.get("name") or fallback_name or "unnamed"
+    exp = "legacy_" + str(name)
+    params = {
+        "label": str(meta.get("label", "")),
+        "pool": str(meta.get("pool", "")),
+        "yaml": str(meta.get("yaml", "")),
+        "window": str(meta.get("window", "")),
+        "segments": json.dumps(meta.get("segments", {})),
+        "git": str(meta.get("git", "")),
+        "seconds": str(meta.get("seconds", "")),
+    }
+    for k, v in (meta.get("model_kwargs") or {}).items():
+        params["model." + str(k)] = str(v)
+    metrics = {}
+    for k in ("IC", "ICIR", "rank_IC", "rank_ICIR", "train_l2", "valid_l2"):
+        if k in meta and meta[k] is not None:
+            metrics[k] = float(meta[k])
+    for k, v in (meta.get("metrics") or {}).items():
+        if isinstance(v, (int, float)) and not isinstance(v, bool):
+            metrics[str(k)] = float(v)
+    tags["qlab.legacy"] = "true"
+    tags["qlab.pool"] = str(meta.get("pool", ""))
+    tags["qlab.yaml"] = str(meta.get("yaml", ""))
+    tags["qlab.source"] = "legacy_backfill"
+    run_id = registry.log_run(exp, params, metrics, tags, artifacts)
+    return run_id, exp, metrics
+
+def _log_eval(ev, tags, artifacts):
+    exp = "eval_" + ev.get("name", "unnamed")
+    params = {
+        "name": str(ev.get("name", "")),
+        "pool": str(ev.get("pool", "")),
+        "h": str(ev.get("h", "")),
+    }
+    metrics = {}
+    for k, v in ev.items():
+        if isinstance(v, (int, float)) and not isinstance(v, bool):
+            metrics[str(k)] = float(v)
+        elif k == "bootstrap" and isinstance(v, dict):
+            for kk, vv in v.items():
+                if isinstance(vv, (int, float)) and not isinstance(vv, bool):
+                    metrics["bootstrap." + str(kk)] = float(vv)
+        elif k == "quarters" and isinstance(v, dict):
+            for q, d in v.items():
+                for kk, vv in d.items():
+                    if isinstance(vv, (int, float)) and not isinstance(vv, bool):
+                        metrics["quarters." + str(q) + "." + str(kk)] = float(vv)
+    tags["qlab.pool"] = str(ev.get("pool", ""))
+    tags["qlab.source"] = "eval_backfill"
+    run_id = registry.log_run(exp, params, metrics, tags, artifacts)
+    return run_id, exp, metrics
+
+def run(spec_path, job_id=None, batch_id=None):
+    spec = specmod.load_spec(spec_path)
+    eff = specmod.resolve(spec)
+    h = specmod.spec_hash(eff)
+    action = spec.get("action") or {"kind": "smoke"}
+    kind = action.get("kind", "smoke")
+    tags = registry.std_tags(h, batch_id=batch_id, source="harness")
+    tags["qlab.git"] = git_commit()
+    tags["qlab.data_version"] = DATA_VERSION
+    tags["qlab.run_name"] = str(spec.get("exp_id")) + "_" + h[:6]
+    if kind == "smoke":
+        exp = spec.get("exp_id")
+        tags["qlab.smoke"] = "true"
+        params = {"exp_id": str(exp), "action": "smoke",
+                  "note": "wiring check only, not a research result"}
+        metrics = {"smoke_check": 1.0}
+        run_id = registry.log_run(exp, params, metrics, tags)
+    elif kind == "log_legacy":
+        mf = Path(QLAB_ROOT / action["meta_file"])
+        meta = json.loads(mf.read_text())
+        run_id, exp, metrics = _log_legacy(meta, tags, {"meta.json": str(mf)}, fallback_name=mf.stem)
+    elif kind == "eval_existing":
+        ef = Path(QLAB_ROOT / action["eval_file"])
+        ev = json.loads(ef.read_text())
+        run_id, exp, metrics = _log_eval(ev, tags, {"eval.json": str(ef)})
+    else:
+        raise ValueError("unknown action kind: " + repr(kind))
+    print("QLAB_RESULT " + json.dumps({"run_id": run_id, "exp_name": exp, "spec_hash": h}))
+    return run_id
+
+def backfill(meta_dir, eval_dir):
+    c = registry.client()
+    have = {e.name for e in c.search_experiments()}
+    res = {"legacy_created": 0, "legacy_skipped": 0, "eval_created": 0, "eval_skipped": 0}
+    for mf in sorted(Path(QLAB_ROOT / meta_dir).glob("*.json")):
+        meta = json.loads(mf.read_text())
+        exp = "legacy_" + str(meta.get("name") or mf.stem)
+        if exp in have:
+            res["legacy_skipped"] += 1
+            continue
+        tags = registry.std_tags("", source="legacy_backfill")
+        tags["qlab.git"] = str(meta.get("git", ""))
+        _log_legacy(meta, tags, {"meta.json": str(mf)}, fallback_name=mf.stem)
+        have.add(exp)
+        res["legacy_created"] += 1
+    for ef in sorted(Path(QLAB_ROOT / eval_dir).glob("*.json")):
+        ev = json.loads(ef.read_text())
+        exp = "eval_" + ev.get("name", "unnamed")
+        if exp in have:
+            res["eval_skipped"] += 1
+            continue
+        tags = registry.std_tags("", source="eval_backfill")
+        _log_eval(ev, tags, {"eval.json": str(ef)})
+        have.add(exp)
+        res["eval_created"] += 1
+    print(json.dumps(res))
+    return res
+
+def main():
+    ap = argparse.ArgumentParser(prog="pipeline.harness")
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    p1 = sub.add_parser("run")
+    p1.add_argument("spec_path")
+    p1.add_argument("--job-id")
+    p1.add_argument("--batch-id")
+    p2 = sub.add_parser("backfill")
+    p2.add_argument("--meta-dir", default="docs/evidence/exps")
+    p2.add_argument("--eval-dir", default="results/eval")
+    a = ap.parse_args()
+    if a.cmd == "run":
+        run(a.spec_path, a.job_id, a.batch_id)
+    elif a.cmd == "backfill":
+        backfill(a.meta_dir, a.eval_dir)
+
+if __name__ == "__main__":
+    main()

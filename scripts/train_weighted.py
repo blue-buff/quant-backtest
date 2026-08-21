@@ -70,10 +70,10 @@ def main():
     def weights(y: pd.Series) -> np.ndarray:
         dates = y.index.get_level_values(0)
         t_max = dates.max()
-        age = (t_max - dates).days
+        age = np.asarray((t_max - dates).days, dtype=float)
         w_time = np.exp(-age / args.half_life)
-        w_ret = 0.2 + 0.8 * np.minimum(np.abs(y.to_numpy()) / 3.0, 1.0)
-        return w_time * w_ret
+        w_ret = 0.2 + 0.8 * np.minimum(np.abs(np.asarray(y, dtype=float)) / 3.0, 1.0)
+        return (w_time * w_ret).astype(np.float32)
 
     X_tr, y_tr = tr[feats], tr["y"]
     X_va, y_va = va[feats], va["y"]

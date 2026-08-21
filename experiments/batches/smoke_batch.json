@@ -1,0 +1,13 @@
+{
+  "batch_id": "b-smoke-001",
+  "specs": [
+    "experiments/specs/smoke_001.json",
+    "experiments/specs/legacy_e03_10d_hs300.json",
+    "experiments/specs/eval_ens3.json"
+  ],
+  "concurrency": 1,
+  "runner_policy": "auto",
+  "timeout_min": 10,
+  "review": "auto",
+  "note": "P0b 烟雾测试批次（不跑训练，只验台账+队列连通性）"
+}

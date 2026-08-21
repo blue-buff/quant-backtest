@@ -188,15 +188,18 @@ def main():
         df_["dt"] = df_.index.get_level_values(0)
         out = []
         for dt, g in df_.groupby("dt"):
+            g = g.dropna()
+            if len(g) < 30:
+                continue
             pct = g["y"].rank(pct=True)
             g["yb"] = (pct * n_buckets).astype(int).clip(upper=n_buckets - 1)
             out.append(g["yb"])
         return pd.concat(out)
     y_tr = quantize_daily(tr["y"]).astype(np.int32)
     y_va = quantize_daily(va["y"]).astype(np.int32)
-    X_tr = tr[feats].sort_index()
+    X_tr = tr[feats].loc[y_tr.index].sort_index()
     y_tr = y_tr.loc[X_tr.index]
-    X_va = va[feats].sort_index()
+    X_va = va[feats].loc[y_va.index].sort_index()
     y_va = y_va.loc[X_va.index]
     groups_tr = X_tr.index.get_level_values(0).value_counts().sort_index().to_numpy()
     groups_va = X_va.index.get_level_values(0).value_counts().sort_index().to_numpy()

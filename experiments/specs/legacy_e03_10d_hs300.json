@@ -1,0 +1,9 @@
+{
+  "exp_id": "legacy_e03_off_10d_hs300",
+  "base": {"note": "backfill via queue base"},
+  "overrides": {},
+  "changes": "历史实验 e03 元数据入账（走队列烟雾路径，不重跑）",
+  "action": {"kind": "log_legacy", "meta_file": "docs/evidence/exps/e03_off_10d_hs300.json"},
+  "runner": "local",
+  "timeout_min": 5
+}

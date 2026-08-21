@@ -38,15 +38,16 @@ def main():
     score = score.loc[common]
     label = label.loc[common]
     if args.pool != "all":
-        f = ROOT / ("~/.qlib/qlib_data/cn_data/instruments/csi300.txt" if args.pool == "hs300"
-                    else "~/.qlib/qlib_data/cn_data_zz500/instruments/csi500.txt")
-        f = Path(str(f).replace("~", "/root"))
+        f = Path("/root/.qlib/qlib_data/cn_data/instruments/csi300.txt" if args.pool == "hs300"
+                 else "/root/.qlib/qlib_data/cn_data_zz500/instruments/csi500.txt")
         codes = {ln.split()[0] for ln in f.read_text().splitlines() if ln.strip()}
         inst = score.index.get_level_values(1)
         mask = inst.isin(codes)
         score = score[mask]
         label = label.loc[score.index]
-    df = pd.DataFrame({"s": score.to_numpy(), "l": label.to_numpy(float)}, index=score.index)
+    s_arr = score.iloc[:, 0].to_numpy() if isinstance(score, pd.DataFrame) else score.to_numpy()
+    l_arr = label.iloc[:, 0].to_numpy(float) if isinstance(label, pd.DataFrame) else label.to_numpy(float)
+    df = pd.DataFrame({"s": s_arr, "l": l_arr}, index=score.index)
     rows = []
     for dt, g in df.groupby(level=0):
         if len(g) < 20:
