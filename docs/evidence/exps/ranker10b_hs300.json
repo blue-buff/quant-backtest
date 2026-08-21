@@ -1,0 +1,26 @@
+{
+  "name": "ranker10b_hs300",
+  "pool": "hs300",
+  "label_days": 10,
+  "ndcg": 50,
+  "num_leaves": 64,
+  "lr": 0.03,
+  "rounds": 600,
+  "best_iter": 6,
+  "valid_ndcg": {
+    "ndcg@50": 0.2011449005399797
+  },
+  "train_shape": [
+    179344,
+    159
+  ],
+  "valid_shape": [
+    37065,
+    159
+  ],
+  "test_shape": [
+    113356,
+    159
+  ],
+  "ts": "2026-08-20T13:17:24"
+}

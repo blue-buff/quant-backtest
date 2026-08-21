@@ -1,0 +1,46 @@
+{
+  "name": "e14_vol10d_zz500",
+  "pool": "zz500",
+  "ts": "2026-08-20T15:06:03",
+  "git": "a14b17a",
+  "yaml": "qlib_examples/experiments/e14_vol10d_zz500.yaml",
+  "ok": true,
+  "label": [
+    "(Ref($close, -11)/Ref($close, -1) - 1) / Max(Std($close/Ref($close, 1) - 1, 20), 0.005)"
+  ],
+  "model_kwargs": {
+    "loss": "mse",
+    "colsample_bytree": 0.8879,
+    "learning_rate": 0.2,
+    "subsample": 0.8789,
+    "lambda_l1": 205.6999,
+    "lambda_l2": 580.9768,
+    "max_depth": 8,
+    "num_leaves": 210,
+    "num_threads": 20
+  },
+  "segments": {
+    "train": [
+      "2022-01-01",
+      "2024-06-30"
+    ],
+    "valid": [
+      "2024-07-01",
+      "2024-12-31"
+    ],
+    "test": [
+      "2025-01-01",
+      "2026-08-14"
+    ]
+  },
+  "train_l2": 0.927814796508052,
+  "valid_l2": 1.0170952371806896,
+  "IC": 0.013296808787724683,
+  "ICIR": 0.12524126218494208,
+  "rank_IC": 0.03004514891350264,
+  "rank_ICIR": 0.3004212343496381,
+  "run_id": "3402dfa9928f4bc0b86e5ec37cac54b2",
+  "seconds": 183.7,
+  "pred_path": "qlib_examples/mlruns/609539386840059474/3402dfa9928f4bc0b86e5ec37cac54b2/artifacts/pred.pkl",
+  "label_pkl": "qlib_examples/mlruns/609539386840059474/3402dfa9928f4bc0b86e5ec37cac54b2/artifacts/label.pkl"
+}
