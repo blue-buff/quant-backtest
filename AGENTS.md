@@ -31,15 +31,25 @@ docker exec -i -w /root/quant hermes-1679f5b2 python -m pipeline.queue status
 ## 3. 台账与队列（QLab 操作规范）
 
 - 台账 = MLflow，存储 sqlite:////root/quant/mlflow-server/mlflow.db。
-  agent 操作走 sqlite 直连，不需要服务常驻；UI 服务仅供人类看浏览器界面时按需启动
-  （sh /root/quant/scripts/mlflow_server.sh start，用完 stop；启动慢约 40 秒且占约 2GB 内存）。
-- 队列 = results/queue/jobs.db（sqlite 任务表）。三个命令：
+  agent 操作默认 sqlite 直连（registry 无探测、无 2 秒税）；只有设了 QLAB_USE_SERVER=1 才会走 UI 服务。
+  UI 服务仅供人类看浏览器界面时按需启动（sh /root/quant/scripts/mlflow_server.sh start，
+  用完 stop；启动慢约 40 秒且占约 2GB 内存）。
+  台账写入防丢：NaN/Inf 指标跳过并打 qlab.dropped_metrics tag；超长参数截断打 qlab.truncated；
+  非法 key 捕获打 qlab.invalid_keys（不再终点线前炸任务）。看正式结果用 board --json --formal
+  （只含 FINISHED 非 smoke 行）。
+- 队列 = results/queue/jobs.db（sqlite 任务表，WAL 模式）。常用命令：
 
 ~~~
 docker exec -i hermes-1679f5b2 sh -c 'cd /root/quant && python -m pipeline.queue submit experiments/batches/xxx.json'
 docker exec -i hermes-1679f5b2 sh -c 'cd /root/quant && python -m pipeline.queue status --json'
 docker exec -i hermes-1679f5b2 sh -c 'cd /root/quant && python -m pipeline.queue run --batch xxx --once'
+docker exec -i hermes-1679f5b2 sh -c 'cd /root/quant && python -m pipeline.queue retry [job_id ...] [--batch xxx] [--blocked]'
+docker exec -i hermes-1679f5b2 sh -c 'cd /root/quant && python -m pipeline.queue unblock [job_id ...]'   # blocked→queued 并强制回 local
+docker exec -i hermes-1679f5b2 sh -c 'cd /root/quant && python -m pipeline.registry heal-zombies [--dry-run]'  # 台账僵尸 RUNNING 清理
 ~~~
+
+- 并发是真的：run --concurrency N（默认 2）用线程池并行执行 N 个任务（原子认领，
+  同一任务只会被一个 dispatcher 执行）。重资源训练建议 --concurrency 1，避免内存竞争。
 
 - 查台账：python -m pipeline.board（导出 results/board.csv，主入口）或 mlflow CLI
   （3.x 语法注意：先 export MLFLOW_TRACKING_URI=sqlite:////root/quant/mlflow-server/mlflow.db，
@@ -49,19 +59,30 @@ docker exec -i hermes-1679f5b2 sh -c 'cd /root/quant && python -m pipeline.queue
 - spec 规则：exp_id 全局唯一；base 用 "ref:xxx" 引用 experiments/refs/；
   允许多变量变更，但必须写 changes 一句话说明；runner 默认 local。
 - 幂等：同 exp_id + 同 spec_hash 且已 done 的任务 submit 时自动跳过；
-  --force 重跑需用户批准。失败任务 retry 命令只重跑 failed 且 attempts<3。
+  --force 重跑需用户批准。数据库有部分唯一索引：同一 spec_hash 只允许一个活跃行
+  （queued/running/blocked），并发双提交/重排不会产生重复执行。
+- retry：重排 failed（attempts<3）任务，可指定 job_id 或 --batch；--blocked 连 blocked 一起重排；
+  重排时清空 error/finished_at。同一 hash 多个失败行只重排最新一行。blocked 任务必须走
+  unblock（或 retry --blocked），它会把 runner 强制回 local——这是 blocked 唯一的出路。
 - 故障排查三板斧（任务报错/卡死时）：
-  show <job_id>（一行看 error+日志尾部+事件链）/ events --since N（增量事件）/ heal（dispatcher 挂掉后对账，running->failed）。
+  show <job_id>（一行看 error+日志尾部+事件链）/ events --since N（增量事件）/
+  heal（dispatcher 死后对账：先验活 PID 再动手，running->failed 并杀孤儿进程组）。
+  heal 输出 JSON 状态：ok（无 running）/ unknown（心跳文件缺失，拒绝动手，需人工 ps 核查）/
+  alive_but_stale（心跳过期但 PID 活着，多半是时钟漂移，不动）/ healed（已确认死亡并善后）。
 - 检查点（防漏失败，强制）：① 每次 run --once 排空返回后立刻 status --json；
   ② 每回合开始时 events --since <上次看到的 id>；③ 修完代码重投前先 show 看错误原因；
   重投 = 重新 submit（幂等，只补 failed 的）。
-- 卡死任务由 timeout_min 兜底：超时整组杀进程（无孤儿）；测试可用
-  QLAB_QUEUE_TIMEOUT_SECONDS 环境变量把超时压到秒级。
+- 卡死任务由 timeout_min 兜底（默认 120 分钟）：超时先 SIGTERM 等 10 秒再 SIGKILL
+  整组杀进程（无孤儿），并把台账里已开的 run 显式置 FAILED（qlab.failed_reason 记录原因）；
+  测试可用 QLAB_QUEUE_TIMEOUT_SECONDS 环境变量把超时压到秒级。
 - 通知机制（已上线，主机 notify_bridge.js）：
   · 常驻运行：node notify_bridge.js --interval 15（日志 notify/bridge.log）；测试单次：--once；
   · 任务失败 -> 自动 POST 到 DSH 会话（/api/session.prompt，mode=queue，agent 会被自动唤醒），
     同时追加 D:\quant_backup\notify\inbox.jsonl 并弹 Windows toast 提醒人类；
-  · dispatcher 心跳失联超 5 分钟且有 running 任务 -> 自动 heal（任务按挂掉处理）+ 通知会话；
+  · dispatcher 心跳是后台线程每 5 秒写的 '<epoch> <pid>'；桥发现可疑时先读容器时钟复核，
+    再调 heal——heal 验活 PID（僵尸进程视为已死）后才动手，所以长任务不可能被误杀；
+  · 心跳文件缺失/不可读 -> heal 拒绝自动判定（unknown），桥发"请人工核查 dispatcher"通知，不自动 heal；
+  · dispatcher 确认死亡 -> 自动 heal（杀孤儿进程组 + 台账 run 置 FAILED）+ 通知会话；
   · 收到【QLab 队列通知】消息时按本节三板斧排查，修复后重新 submit；
   · 会话 id 存在 D:\quant_backup\notify\session.txt，换新会话时要更新（否则通知找不到家）。
 - P1 完成前，真实训练仍用旧脚本 scripts/run_exps.py 跑，跑完用
@@ -87,9 +108,12 @@ docker exec -i hermes-1679f5b2 sh -c 'cd /root/quant && python -m pipeline.queue
 
 ~~~
 docker exec -i -w /root/quant hermes-1679f5b2 python -m pipeline.backup snap
+    # snap 含 jobs.db/mlflow.db 在线一致性副本（sqlite backup API）+ run 制品（>50MB 文件除外，
+    # 例外清单写在 zip 内 manifest.json），不再是纯导出件
 docker cp hermes-1679f5b2:/root/quant/results/backup D:/quant_backup/backup   # 主机镜像
 docker exec -i -w /root/quant hermes-1679f5b2 python -m pipeline.backup push --message "..."
     # push 需要 token：先在本机跑 gh auth token 拿值，再传进容器
+    # push 只把最新一个 snap zip 加进 git（旧 zip 留盘、已在历史里），仓库不会无限膨胀
 ~~~
 
 - commit message 必须带 batch_id / exp_id 或本轮主题。
@@ -106,6 +130,14 @@ docker exec -i -w /root/quant hermes-1679f5b2 python -m pipeline.backup push --m
 - MLflow 3.x 废弃文件目录式存储，用 sqlite 后端；旧数据已用 migrate-filestore 迁移。
 - qlib 特征/标签窗口：特征用到未来信息是泄露，te 段预测用 infer_processors=[] 只取特征。
 - 容器内存 12GB：全市场整批加载会 OOM，要分块或走远程（远程需用户批准）。
+- 队列坑位（本轮评审修复后）：
+  · 同一 spec_hash 只允许一个活跃行（部分唯一索引）；retry/unblock 自动只重排每 hash 最新一行；
+  · heal 验活含僵尸判定：/proc/<pid> 状态为 Z 的进程视为已死（kill(pid,0) 对僵尸仍返回成功）；
+  · 排队期间改 spec 文件 → harness 拒跑（stderr QLAB_SPEC_DRIFT，任务 failed 并写明新旧 hash），
+    改回原文件后 retry 即可，或重新 submit 记录新配置；
+  · hang action 自然结束必失败（"hang action ended without timeout"是预期行为，专测超时路径）；
+    测队列机制/并发用 sleep_ok action（延时 N 秒正常成功，入账标 smoke）；
+  · 桥发现心跳可疑时先读容器时钟复核再 heal，Docker 睡眠唤醒的时钟漂移不会误杀。
 
 ## 8. 结论表述纪律
 

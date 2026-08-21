@@ -1,8 +1,19 @@
 """Execute one spec action and write the result into the ledger (MLflow)."""
-import argparse, json, subprocess
+import argparse, json, os, subprocess, sys
 from pathlib import Path
 from . import QLAB_ROOT, DATA_VERSION
 from . import registry, spec as specmod
+
+def _write_runid_file(run_id):
+    """Let the queue link/close the ledger run even if this process dies later."""
+    p = os.environ.get("QLAB_RUNID_FILE")
+    if not p or not run_id:
+        return
+    try:
+        Path(p).parent.mkdir(parents=True, exist_ok=True)
+        Path(p).write_text(str(run_id))
+    except Exception:
+        pass
 
 def git_commit():
     try:
@@ -92,12 +103,18 @@ def run(spec_path, job_id=None, batch_id=None):
     spec = specmod.load_spec(spec_path)
     eff = specmod.resolve(spec)
     h = specmod.spec_hash(eff)
+    expected = os.environ.get("QLAB_EXPECTED_HASH")
+    if expected and expected != h:
+        # The spec file changed after submit; running it would break reproducibility.
+        sys.stderr.write("QLAB_SPEC_DRIFT expected=%s actual=%s\n" % (expected, h))
+        sys.exit(2)
     action = spec.get("action") or {"kind": "smoke"}
     kind = action.get("kind", "smoke")
     tags = registry.std_tags(h, batch_id=batch_id, source="harness")
     tags["qlab.git"] = git_commit()
     tags["qlab.data_version"] = DATA_VERSION
     tags["qlab.run_name"] = str(spec.get("exp_id")) + "_" + h[:6]
+    tags["qlab.exp_id"] = str(spec.get("exp_id"))
     if kind == "smoke":
         exp = spec.get("exp_id")
         tags["qlab.smoke"] = "true"
@@ -112,6 +129,7 @@ def run(spec_path, job_id=None, batch_id=None):
         existing = find_existing(exp, str(mf))
         if existing:
             run_id = existing
+            _write_runid_file(run_id)
             print("QLAB_RESULT " + json.dumps({"run_id": run_id, "exp_name": exp,
                                                "spec_hash": h, "reused": True}))
             return run_id
@@ -123,10 +141,21 @@ def run(spec_path, job_id=None, batch_id=None):
         existing = find_existing(exp, str(ef))
         if existing:
             run_id = existing
+            _write_runid_file(run_id)
             print("QLAB_RESULT " + json.dumps({"run_id": run_id, "exp_name": exp,
                                                "spec_hash": h, "reused": True}))
             return run_id
         run_id, exp, metrics = _log_eval(ev, tags, {"eval.json": str(ef)})
+    elif kind == "sleep_ok":
+        import time as _time
+        _time.sleep(float(action.get("seconds", 10)))
+        exp = spec.get("exp_id")
+        tags["qlab.smoke"] = "true"
+        params = {"exp_id": str(exp), "action": "sleep_ok",
+                  "seconds": str(action.get("seconds", 10)),
+                  "note": "timing/mechanics test only, not a research result"}
+        metrics = {"smoke_check": 1.0}
+        run_id = registry.log_run(exp, params, metrics, tags)
     elif kind == "hang":
         import time as _time
         _time.sleep(float(action.get("seconds", 300)))
@@ -135,6 +164,7 @@ def run(spec_path, job_id=None, batch_id=None):
         raise ValueError("deterministic crash for failure-path testing")
     else:
         raise ValueError("unknown action kind: " + repr(kind))
+    _write_runid_file(run_id)
     print("QLAB_RESULT " + json.dumps({"run_id": run_id, "exp_name": exp, "spec_hash": h}))
     return run_id
 

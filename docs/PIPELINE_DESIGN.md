@@ -345,3 +345,36 @@ metrics.json / pred.parquet——入口是工具，不是规则。读后写一�
 | 评审驳回改变实验状态 | 评审只是附在 run 上的意见标签 |
 | 多重检验修正在每次结果中强制 | 保留为一键全算选项，必要时再用 |
 | 新增 | 偏差记录（半句话，可选但推荐）——飞行记录仪的核心 |
+
+---
+
+## 13. As-built 状态（构建进度与偏差登记，2026-08-21 评审后更新）
+
+以代码为准。已完成与设计承诺的对应关系：
+
+### 13.1 已实现（含本轮评审 P0 修复）
+
+- registry.py：MLflow sqlite 账本。agent 默认直连（无 2s 探测税）；get-or-create 加跨进程锁；
+  NaN/Inf 指标、非法 key、超长参数/标签全部带 tag 记录而不炸任务；mark_failed（RUNNING→FAILED）；
+  heal-zombies（僵尸 RUNNING 清理）；export_json 原子写。
+- queue.py：真并发（线程池 + 原子认领 + WAL + 部分唯一索引）；心跳 = 后台线程每 5 秒写
+  '<epoch> <pid>'；heal 验活 PID（含 /proc 僵尸判定）后才动手，心跳缺失拒判（unknown）；
+  超时 SIGTERM→SIGKILL 杀进程组并台账闭环；spec 漂移拒跑（QLAB_SPEC_DRIFT）；
+  retry/unblock 打通 blocked 出路；notify 全量排空不丢事件。
+- harness.py：smoke / log_legacy / eval_existing / sleep_ok / hang / crash 六种 action。
+- backup.py：snap 含 jobs.db/mlflow.db 在线一致性副本 + run 制品 + manifest.json；
+  push 只追踪最新 zip。
+- board.py：--json --formal 视图（FINISHED 非 smoke 的正式研究行）。
+- notify_bridge.js：容器时钟复核 + heal 状态机（healed→通知；unknown→人工核查通知；alive_but_stale→静默）。
+
+### 13.2 已知差距（设计有、代码没有）
+
+1. **metrics.py 缺失**——设计 §4 的核心 5 项指标自动计算无实现。
+2. **harness 无真实训练 action**——spec→训练→预测→metrics.json 闭环仍是纸上的；
+   真实训练继续走旧脚本 + backfill 入账（AGENTS §3 P1 过渡路线）。
+3. spec 校验器（exp_id 唯一 / base 可解析 / 结构合法）未实现，只有 load/merge/hash。
+4. 偏差记录 deviations 落点未实现（设计 §10.4）；review 结果不进 run artifact；claims 联动未实现。
+5. 失败自动重试（1 次）未实现，只有手动 retry；资源声明/背压调度（§9）未实现。
+6. results/runs/<exp_id>/{effective_config, metrics.json, review.json, pred.parquet} 产物布局未实现。
+7. 远程 runner（§9 远程机）未启用：runner!=local 一律 blocked，unblock 才能强制回本地。
+8. 桥在主机无自动启动（重启后需手动拉起），长驻通知依赖人工值守。

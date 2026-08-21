@@ -1,0 +1,10 @@
+{
+ "exp_id": "t_hang_a",
+ "base": {},
+ "action": {
+  "kind": "sleep_ok",
+  "seconds": 30
+ },
+ "timeout_min": 2,
+ "changes": "queue mechanics test: sleep_ok 30s for concurrency sampling"
+}

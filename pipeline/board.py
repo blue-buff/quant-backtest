@@ -6,13 +6,16 @@ FIELDS = ["exp", "run_id", "status", "source", "pool", "seed", "batch",
           "legacy", "smoke", "git", "rank_IC", "IC", "rankic_mean", "p_le0",
           "start_time"]
 
-def rows():
+def rows(formal=False):
+    """formal=True: only FINISHED non-smoke research rows (no wiring checks, no failures)."""
     out = []
     c = registry.client()
     for e in c.search_experiments():
         for r in c.search_runs(e.experiment_id, max_results=5000):
             t = dict(r.data.tags)
             m = r.data.metrics
+            if formal and (r.info.status != "FINISHED" or t.get("qlab.smoke") == "true"):
+                continue
             out.append({
                 "exp": e.name,
                 "run_id": r.info.run_id,
@@ -42,16 +45,21 @@ def export(csv_path=None, to_console=True):
         for r in data:
             w.writerow(r)
     if to_console:
-        print(json.dumps({"runs": len(data), "csv": out}))
+        by_status = {}
+        for r in data:
+            by_status[r["status"]] = by_status.get(r["status"], 0) + 1
+        print(json.dumps({"runs": len(data), "by_status": by_status, "csv": out}))
     return data
 
 def main():
     ap = argparse.ArgumentParser(prog="pipeline.board")
     ap.add_argument("--csv", default=None, help="output path (default results/board.csv)")
     ap.add_argument("--json", action="store_true", help="print rows as json instead of csv summary")
+    ap.add_argument("--formal", action="store_true",
+                    help="formal view: only FINISHED non-smoke research rows")
     a = ap.parse_args()
     if a.json:
-        print(json.dumps(rows(), ensure_ascii=False, indent=1, default=str))
+        print(json.dumps(rows(a.formal), ensure_ascii=False, indent=1, default=str))
     else:
         export(a.csv)
 

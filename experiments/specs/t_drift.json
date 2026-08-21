@@ -1,0 +1,8 @@
+{
+ "exp_id": "t_drift",
+ "base": {},
+ "action": {
+  "kind": "smoke"
+ },
+ "timeout_min": 2
+}

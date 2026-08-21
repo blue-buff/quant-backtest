@@ -1,5 +1,230 @@
 [
  {
+  "experiment": "registry_guard_test",
+  "experiment_id": "998523467799789656",
+  "runs": [
+   {
+    "run_id": "c26bad3fa4b5478c8bf56d446ef710af",
+    "status": "FINISHED",
+    "start_time": 1787331954887,
+    "params": {},
+    "metrics": {},
+    "tags": {
+     "mlflow.user": "root",
+     "mlflow.source.name": "-",
+     "mlflow.source.type": "LOCAL",
+     "mlflow.runName": "valuable-flea-278",
+     "qlab.failed_reason": "test close"
+    }
+   },
+   {
+    "run_id": "176de88f36eb42ba9148aff9d3c2e482",
+    "status": "FINISHED",
+    "start_time": 1787331933595,
+    "params": {
+     "p_long": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+     "p_ok": "v"
+    },
+    "metrics": {
+     "m_ok": 1.5
+    },
+    "tags": {
+     "mlflow.user": "root",
+     "mlflow.source.name": "-",
+     "mlflow.source.type": "LOCAL",
+     "mlflow.runName": "run",
+     "qlab.smoke": "true",
+     "t_long": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy",
+     "qlab.dropped_metrics": "m_nan,m_inf",
+     "qlab.invalid_keys": "metric:m_bad key!",
+     "qlab.truncated": "param:p_long,tag:t_long"
+    }
+   }
+  ]
+ },
+ {
+  "experiment": "t_remote",
+  "experiment_id": "998523467799789655",
+  "runs": [
+   {
+    "run_id": "1b390ad1b6e248918b2a0c8afe1deaa7",
+    "status": "FINISHED",
+    "start_time": 1787331711511,
+    "params": {
+     "exp_id": "t_remote",
+     "action": "smoke",
+     "note": "wiring check only, not a research result"
+    },
+    "metrics": {
+     "smoke_check": 1.0
+    },
+    "tags": {
+     "mlflow.user": "root",
+     "mlflow.source.name": "/root/quant/pipeline/harness.py",
+     "mlflow.source.type": "LOCAL",
+     "mlflow.source.git.commit": "d5ffcfbe6c6c6dce44c874faae2cd9b0282fc185",
+     "mlflow.source.git.branch": "main",
+     "mlflow.source.git.repoURL": "https://github.com/blue-buff/quant-backtest.git",
+     "mlflow.runName": "t_remote_a81c9a",
+     "qlab.spec_hash": "a81c9a60a9f46df0",
+     "qlab.source": "harness",
+     "qlab.data_version": "v3",
+     "qlab.batch_id": "t-remote",
+     "qlab.git": "d5ffcfbe",
+     "qlab.run_name": "t_remote_a81c9a",
+     "qlab.exp_id": "t_remote",
+     "qlab.smoke": "true"
+    }
+   }
+  ]
+ },
+ {
+  "experiment": "t_drift",
+  "experiment_id": "998523467799789654",
+  "runs": [
+   {
+    "run_id": "1a60c95aed884845bb697d8f0fdbef6f",
+    "status": "FINISHED",
+    "start_time": 1787331694485,
+    "params": {
+     "exp_id": "t_drift",
+     "action": "smoke",
+     "note": "wiring check only, not a research result"
+    },
+    "metrics": {
+     "smoke_check": 1.0
+    },
+    "tags": {
+     "mlflow.user": "root",
+     "mlflow.source.name": "/root/quant/pipeline/harness.py",
+     "mlflow.source.type": "LOCAL",
+     "mlflow.source.git.commit": "d5ffcfbe6c6c6dce44c874faae2cd9b0282fc185",
+     "mlflow.source.git.branch": "main",
+     "mlflow.source.git.repoURL": "https://github.com/blue-buff/quant-backtest.git",
+     "mlflow.runName": "t_drift_66d651",
+     "qlab.spec_hash": "66d651d15b11dbf5",
+     "qlab.source": "harness",
+     "qlab.data_version": "v3",
+     "qlab.batch_id": "t-drift",
+     "qlab.git": "d5ffcfbe",
+     "qlab.run_name": "t_drift_66d651",
+     "qlab.exp_id": "t_drift",
+     "qlab.smoke": "true"
+    }
+   }
+  ]
+ },
+ {
+  "experiment": "t_smoke_cc",
+  "experiment_id": "998523467799789653",
+  "runs": [
+   {
+    "run_id": "33091ec5ebf949e9803a224cc16cf7a3",
+    "status": "FINISHED",
+    "start_time": 1787331667875,
+    "params": {
+     "exp_id": "t_smoke_cc",
+     "action": "smoke",
+     "note": "wiring check only, not a research result"
+    },
+    "metrics": {
+     "smoke_check": 1.0
+    },
+    "tags": {
+     "mlflow.user": "root",
+     "mlflow.source.name": "/root/quant/pipeline/harness.py",
+     "mlflow.source.type": "LOCAL",
+     "mlflow.source.git.commit": "d5ffcfbe6c6c6dce44c874faae2cd9b0282fc185",
+     "mlflow.source.git.branch": "main",
+     "mlflow.source.git.repoURL": "https://github.com/blue-buff/quant-backtest.git",
+     "mlflow.runName": "t_smoke_cc_3edb56",
+     "qlab.spec_hash": "3edb562969480882",
+     "qlab.source": "harness",
+     "qlab.data_version": "v3",
+     "qlab.batch_id": "t-smoke-cc",
+     "qlab.git": "d5ffcfbe",
+     "qlab.run_name": "t_smoke_cc_3edb56",
+     "qlab.exp_id": "t_smoke_cc",
+     "qlab.smoke": "true"
+    }
+   }
+  ]
+ },
+ {
+  "experiment": "t_hang_a",
+  "experiment_id": "998523467799789652",
+  "runs": [
+   {
+    "run_id": "c9933d87c7a34bee8a19099f28174354",
+    "status": "FINISHED",
+    "start_time": 1787331635752,
+    "params": {
+     "exp_id": "t_hang_a",
+     "action": "sleep_ok",
+     "seconds": "30",
+     "note": "timing/mechanics test only, not a research result"
+    },
+    "metrics": {
+     "smoke_check": 1.0
+    },
+    "tags": {
+     "mlflow.user": "root",
+     "mlflow.source.name": "/root/quant/pipeline/harness.py",
+     "mlflow.source.type": "LOCAL",
+     "mlflow.source.git.commit": "d5ffcfbe6c6c6dce44c874faae2cd9b0282fc185",
+     "mlflow.source.git.branch": "main",
+     "mlflow.source.git.repoURL": "https://github.com/blue-buff/quant-backtest.git",
+     "mlflow.runName": "t_hang_a_bb014a",
+     "qlab.spec_hash": "bb014a21cc7ea88e",
+     "qlab.source": "harness",
+     "qlab.data_version": "v3",
+     "qlab.batch_id": "t-concurrency",
+     "qlab.git": "d5ffcfbe",
+     "qlab.run_name": "t_hang_a_bb014a",
+     "qlab.exp_id": "t_hang_a",
+     "qlab.smoke": "true"
+    }
+   }
+  ]
+ },
+ {
+  "experiment": "t_hang_b",
+  "experiment_id": "998523467799789651",
+  "runs": [
+   {
+    "run_id": "e2f6fdf96df24462b086f23072affeef",
+    "status": "FINISHED",
+    "start_time": 1787331635030,
+    "params": {
+     "exp_id": "t_hang_b",
+     "action": "sleep_ok",
+     "seconds": "30",
+     "note": "timing/mechanics test only, not a research result"
+    },
+    "metrics": {
+     "smoke_check": 1.0
+    },
+    "tags": {
+     "mlflow.user": "root",
+     "mlflow.source.name": "/root/quant/pipeline/harness.py",
+     "mlflow.source.type": "LOCAL",
+     "mlflow.source.git.commit": "d5ffcfbe6c6c6dce44c874faae2cd9b0282fc185",
+     "mlflow.source.git.branch": "main",
+     "mlflow.source.git.repoURL": "https://github.com/blue-buff/quant-backtest.git",
+     "mlflow.runName": "t_hang_b_4acc08",
+     "qlab.spec_hash": "4acc088ffb502d02",
+     "qlab.source": "harness",
+     "qlab.data_version": "v3",
+     "qlab.batch_id": "t-concurrency",
+     "qlab.git": "d5ffcfbe",
+     "qlab.run_name": "t_hang_b_4acc08",
+     "qlab.exp_id": "t_hang_b",
+     "qlab.smoke": "true"
+    }
+   }
+  ]
+ },
+ {
   "experiment": "smoke_002",
   "experiment_id": "998523467799789650",
   "runs": [
@@ -4793,7 +5018,7 @@
   "runs": [
    {
     "run_id": "8b1fdbf2cea842c6ae2f0112d5dd978d",
-    "status": "RUNNING",
+    "status": "FAILED",
     "start_time": 1787244823917,
     "params": {
      "cmd-sys.argv": "/usr/local/lib/python3.12/site-packages/qlib/cli/run.py /root/quant/results/exps/e17_all_10d_21/work.yaml",
@@ -4829,12 +5054,13 @@
      "mlflow.runName": "mlflow_recorder",
      "mlflow.source.name": "/usr/local/lib/python3.12/site-packages/qlib/cli/run.py",
      "mlflow.source.type": "LOCAL",
-     "mlflow.user": "root"
+     "mlflow.user": "root",
+     "qlab.failed_reason": "zombie: RUNNING > 24h, auto-closed by registry.heal_zombies"
     }
    },
    {
     "run_id": "2cf45fe2d3cd4688a5768827870e81f4",
-    "status": "RUNNING",
+    "status": "FAILED",
     "start_time": 1787243189768,
     "params": {
      "cmd-sys.argv": "/usr/local/lib/python3.12/site-packages/qlib/cli/run.py /root/quant/results/exps/e17_all_10d_21/work.yaml",
@@ -4870,7 +5096,8 @@
      "mlflow.runName": "mlflow_recorder",
      "mlflow.source.name": "/usr/local/lib/python3.12/site-packages/qlib/cli/run.py",
      "mlflow.source.type": "LOCAL",
-     "mlflow.user": "root"
+     "mlflow.user": "root",
+     "qlab.failed_reason": "zombie: RUNNING > 24h, auto-closed by registry.heal_zombies"
     }
    },
    {
@@ -6396,7 +6623,7 @@
   "runs": [
    {
     "run_id": "b09872fe866346f38409c525591b241c",
-    "status": "RUNNING",
+    "status": "FAILED",
     "start_time": 1787234908915,
     "params": {
      "cmd-sys.argv": "/usr/local/lib/python3.12/site-packages/qlib/cli/run.py /root/quant/results/exps/roll10b_zz500_w01/work.yaml",
@@ -6432,7 +6659,8 @@
      "mlflow.runName": "mlflow_recorder",
      "mlflow.source.name": "/usr/local/lib/python3.12/site-packages/qlib/cli/run.py",
      "mlflow.source.type": "LOCAL",
-     "mlflow.user": "root"
+     "mlflow.user": "root",
+     "qlab.failed_reason": "zombie: RUNNING > 24h, auto-closed by registry.heal_zombies"
     }
    }
   ]
@@ -6752,7 +6980,7 @@
   "runs": [
    {
     "run_id": "1a1898be356646dfa48119dcec87dc27",
-    "status": "RUNNING",
+    "status": "FAILED",
     "start_time": 1787234259843,
     "params": {
      "cmd-sys.argv": "/usr/local/lib/python3.12/site-packages/qlib/cli/run.py /root/quant/results/exps/roll10_zz500_w03/work.yaml",
@@ -6788,7 +7016,8 @@
      "mlflow.runName": "mlflow_recorder",
      "mlflow.source.name": "/usr/local/lib/python3.12/site-packages/qlib/cli/run.py",
      "mlflow.source.type": "LOCAL",
-     "mlflow.user": "root"
+     "mlflow.user": "root",
+     "qlab.failed_reason": "zombie: RUNNING > 24h, auto-closed by registry.heal_zombies"
     }
    }
   ]
@@ -7829,7 +8058,7 @@
    },
    {
     "run_id": "b8d453269d5b4a3eae47d8b7eeacd315",
-    "status": "RUNNING",
+    "status": "FAILED",
     "start_time": 1787230333448,
     "params": {
      "cmd-sys.argv": "/usr/local/lib/python3.12/site-packages/qlib/cli/run.py /root/quant/results/exps/e05_off_1d_dart_hs300/work.yaml",
@@ -7871,7 +8100,8 @@
      "mlflow.runName": "mlflow_recorder",
      "mlflow.source.name": "/usr/local/lib/python3.12/site-packages/qlib/cli/run.py",
      "mlflow.source.type": "LOCAL",
-     "mlflow.user": "root"
+     "mlflow.user": "root",
+     "qlab.failed_reason": "zombie: RUNNING > 24h, auto-closed by registry.heal_zombies"
     }
    }
   ]

@@ -1,0 +1,6 @@
+{
+ "batch_id": "t-smoke-cc",
+ "specs": [
+  "experiments/specs/t_smoke_cc.json"
+ ]
+}

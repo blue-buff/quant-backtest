@@ -1,0 +1,8 @@
+{
+ "exp_id": "t_smoke_cc",
+ "base": {},
+ "action": {
+  "kind": "smoke"
+ },
+ "timeout_min": 2
+}
