@@ -52,9 +52,9 @@ def _event(conn, job_id, batch_id, exp_id, status, error=None):
     return line
 
 def _beat():
-    """Dispatcher heartbeat: touch heartbeat file with current timestamp."""
+    """Dispatcher heartbeat: write epoch seconds (timezone-proof)."""
     HEARTBEAT_FILE.parent.mkdir(parents=True, exist_ok=True)
-    HEARTBEAT_FILE.write_text(_now())
+    HEARTBEAT_FILE.write_text(str(int(time.time())))
 
 def submit(batch_path):
     batch = json.loads(Path(batch_path).read_text())
@@ -131,9 +131,14 @@ def _execute(conn, row):
             if line.startswith("QLAB_RESULT "):
                 result = json.loads(line[len("QLAB_RESULT "):])
         if proc.returncode == 0 and result and result.get("run_id"):
-            conn.execute("UPDATE jobs SET status='done', finished_at=?, mlflow_run_id=?, error=NULL WHERE job_id=?",
-                         (_now(), result["run_id"], jid))
-            _event(conn, jid, row["batch_id"], row["exp_id"], "done")
+            cur = conn.execute("UPDATE jobs SET status='done', finished_at=?, mlflow_run_id=?, error=NULL"
+                               " WHERE job_id=? AND status='running'",
+                               (_now(), result["run_id"], jid))
+            if cur.rowcount > 0:
+                _event(conn, jid, row["batch_id"], row["exp_id"], "done")
+            else:
+                _event(conn, jid, row["batch_id"], row["exp_id"], "done",
+                       "completed but job had been auto-healed concurrently; state kept as healed")
         else:
             conn.execute("UPDATE jobs SET status='failed', finished_at=?, error=? WHERE job_id=?",
                          (_now(), ((err or "")[-400:] or "no QLAB_RESULT in stdout"), jid))
@@ -201,9 +206,8 @@ def heal(stale_minutes=STALE_MINUTES):
     hb_age = None
     if HEARTBEAT_FILE.exists():
         try:
-            hb_ts = datetime.strptime(HEARTBEAT_FILE.read_text().strip(), "%Y-%m-%d %H:%M:%S")
-            hb_age = (datetime.now() - hb_ts).total_seconds()
-        except ValueError:
+            hb_age = time.time() - int(HEARTBEAT_FILE.read_text().strip())
+        except (ValueError, OSError):
             hb_age = None
     rows = conn.execute("SELECT * FROM jobs WHERE status='running'").fetchall()
     dead = hb_age is None or hb_age > stale_minutes * 60
