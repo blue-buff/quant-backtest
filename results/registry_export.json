@@ -1,5 +1,40 @@
 [
  {
+  "experiment": "smoke_002",
+  "experiment_id": "998523467799789650",
+  "runs": [
+   {
+    "run_id": "0601052cbb904ca99122f2031ba6de69",
+    "status": "FINISHED",
+    "start_time": 1787328265158,
+    "params": {
+     "exp_id": "smoke_002",
+     "action": "smoke",
+     "note": "wiring check only, not a research result"
+    },
+    "metrics": {
+     "smoke_check": 1.0
+    },
+    "tags": {
+     "mlflow.user": "root",
+     "mlflow.source.name": "/root/quant/pipeline/harness.py",
+     "mlflow.source.type": "LOCAL",
+     "mlflow.source.git.commit": "3794bc59bc30d882afc61399d2bffe51697664e4",
+     "mlflow.source.git.branch": "main",
+     "mlflow.source.git.repoURL": "https://github.com/blue-buff/quant-backtest.git",
+     "mlflow.runName": "smoke_002_809569",
+     "qlab.spec_hash": "8095695d5da29027",
+     "qlab.source": "harness",
+     "qlab.batch_id": "b-server-smoke-001",
+     "qlab.git": "3794bc59",
+     "qlab.data_version": "v3",
+     "qlab.run_name": "smoke_002_809569",
+     "qlab.smoke": "true"
+    }
+   }
+  ]
+ },
+ {
   "experiment": "smoke_001",
   "experiment_id": "998523467799789649",
   "runs": [
@@ -1846,55 +1881,6 @@
      "qlab.git": "4d883bf3",
      "qlab.data_version": "v3",
      "qlab.run_name": "eval_all10d_ens3_all_076832",
-     "qlab.pool": "all"
-    }
-   },
-   {
-    "run_id": "fbdd426653d0430384594af5a4ffd55a",
-    "status": "FINISHED",
-    "start_time": 1787324491909,
-    "params": {
-     "name": "all10d_ens3_all",
-     "pool": "all",
-     "h": "10"
-    },
-    "metrics": {
-     "h": 10.0,
-     "n_days": 381.0,
-     "n_nonoverlap": 39.0,
-     "rankic_mean": 0.08593621251596717,
-     "rankic_std": 0.13084503660777536,
-     "rankic_ir": 0.656778543106468,
-     "nonoverlap_rankic_mean": 0.09518113976793925,
-     "nonoverlap_rankic_ir": 0.7160647134446431,
-     "bootstrap.p_le0": 0.0,
-     "quarters.2025Q1.n": 57.0,
-     "quarters.2025Q1.rankic": 0.10931408765064572,
-     "quarters.2025Q2.n": 60.0,
-     "quarters.2025Q2.rankic": 0.10229597009888232,
-     "quarters.2025Q3.n": 66.0,
-     "quarters.2025Q3.rankic": 0.07211369083515144,
-     "quarters.2025Q4.n": 60.0,
-     "quarters.2025Q4.rankic": 0.0699556568701773,
-     "quarters.2026Q1.n": 56.0,
-     "quarters.2026Q1.rankic": 0.10965004087088655,
-     "quarters.2026Q2.n": 60.0,
-     "quarters.2026Q2.rankic": -0.01599933739099095,
-     "quarters.2026Q3.n": 22.0,
-     "quarters.2026Q3.rankic": 0.2834432142692237,
-     "top_minus_bottom_mean": 0.0849650086018199,
-     "top_gt_bottom_frac": 0.5984251968503937
-    },
-    "tags": {
-     "mlflow.user": "root",
-     "mlflow.source.name": "/root/quant/pipeline/harness.py",
-     "mlflow.source.type": "LOCAL",
-     "mlflow.source.git.commit": "4d883bf3a2e889976f17fa064ad267abc4604b3f",
-     "mlflow.source.git.branch": "main",
-     "mlflow.source.git.repoURL": "https://github.com/blue-buff/quant-backtest.git",
-     "mlflow.runName": "run",
-     "qlab.spec_hash": "",
-     "qlab.source": "eval_backfill",
      "qlab.pool": "all"
     }
    }
@@ -4159,51 +4145,6 @@
      "qlab.git": "4d883bf3",
      "qlab.data_version": "v3",
      "qlab.run_name": "legacy_e03_off_10d_hs300_f3b731",
-     "qlab.legacy": "true",
-     "qlab.pool": "hs300",
-     "qlab.yaml": "qlib_examples/experiments/e03_off_10d_hs300.yaml"
-    }
-   },
-   {
-    "run_id": "28157a5d0d7c429a950ac85f7c11d40a",
-    "status": "FINISHED",
-    "start_time": 1787324405327,
-    "params": {
-     "label": "['Ref($close, -11)/Ref($close, -1) - 1']",
-     "pool": "hs300",
-     "yaml": "qlib_examples/experiments/e03_off_10d_hs300.yaml",
-     "segments": "{\"train\": [\"2022-01-01\", \"2024-06-30\"], \"valid\": [\"2024-07-01\", \"2024-12-31\"], \"test\": [\"2025-01-01\", \"2026-08-14\"]}",
-     "git": "53bf0f2",
-     "seconds": "80.2",
-     "model.loss": "mse",
-     "model.colsample_bytree": "0.8879",
-     "model.learning_rate": "0.2",
-     "model.subsample": "0.8789",
-     "model.lambda_l1": "205.6999",
-     "model.lambda_l2": "580.9768",
-     "model.max_depth": "8",
-     "model.num_leaves": "210",
-     "model.num_threads": "20"
-    },
-    "metrics": {
-     "IC": 0.002337039101014838,
-     "ICIR": 0.015768832845245565,
-     "rank_IC": 0.02282035472779477,
-     "rank_ICIR": 0.1451990138911447,
-     "train_l2": 0.8916577140486524,
-     "valid_l2": 1.0268579731285976
-    },
-    "tags": {
-     "mlflow.user": "root",
-     "mlflow.source.name": "/root/quant/pipeline/harness.py",
-     "mlflow.source.type": "LOCAL",
-     "mlflow.source.git.commit": "4d883bf3a2e889976f17fa064ad267abc4604b3f",
-     "mlflow.source.git.branch": "main",
-     "mlflow.source.git.repoURL": "https://github.com/blue-buff/quant-backtest.git",
-     "mlflow.runName": "run",
-     "qlab.spec_hash": "",
-     "qlab.source": "legacy_backfill",
-     "qlab.git": "53bf0f2",
      "qlab.legacy": "true",
      "qlab.pool": "hs300",
      "qlab.yaml": "qlib_examples/experiments/e03_off_10d_hs300.yaml"

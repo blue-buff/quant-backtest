@@ -23,6 +23,7 @@ def _log_legacy(meta, tags, artifacts, fallback_name=""):
         "segments": json.dumps(meta.get("segments", {})),
         "git": str(meta.get("git", "")),
         "seconds": str(meta.get("seconds", "")),
+        "source_file": str(artifacts.get("meta.json", "")),
     }
     for k, v in (meta.get("model_kwargs") or {}).items():
         params["model." + str(k)] = str(v)
@@ -46,6 +47,7 @@ def _log_eval(ev, tags, artifacts):
         "name": str(ev.get("name", "")),
         "pool": str(ev.get("pool", "")),
         "h": str(ev.get("h", "")),
+        "source_file": str(artifacts.get("eval.json", "")),
     }
     metrics = {}
     for k, v in ev.items():
@@ -64,6 +66,27 @@ def _log_eval(ev, tags, artifacts):
     tags["qlab.source"] = "eval_backfill"
     run_id = registry.log_run(exp, params, metrics, tags, artifacts)
     return run_id, exp, metrics
+
+def find_existing(exp_name, source_file):
+    """Return run_id if this experiment already has a run logged from the same source file.
+    Matches on the source_file param (new runs) or the artifact basename (old runs)."""
+    if not source_file:
+        return None
+    c = registry.client()
+    e = c.get_experiment_by_name(exp_name)
+    if e is None:
+        return None
+    target = Path(source_file).name
+    for r in c.search_runs(e.experiment_id, max_results=5000):
+        if r.data.params.get("source_file") == source_file:
+            return r.info.run_id
+        try:
+            for a in c.list_artifacts(r.info.run_id):
+                if a.path == target:
+                    return r.info.run_id
+        except Exception:
+            pass
+    return None
 
 def run(spec_path, job_id=None, batch_id=None):
     spec = specmod.load_spec(spec_path)
@@ -85,10 +108,24 @@ def run(spec_path, job_id=None, batch_id=None):
     elif kind == "log_legacy":
         mf = Path(QLAB_ROOT / action["meta_file"])
         meta = json.loads(mf.read_text())
+        exp = "legacy_" + str(meta.get("name") or mf.stem)
+        existing = find_existing(exp, str(mf))
+        if existing:
+            run_id = existing
+            print("QLAB_RESULT " + json.dumps({"run_id": run_id, "exp_name": exp,
+                                               "spec_hash": h, "reused": True}))
+            return run_id
         run_id, exp, metrics = _log_legacy(meta, tags, {"meta.json": str(mf)}, fallback_name=mf.stem)
     elif kind == "eval_existing":
         ef = Path(QLAB_ROOT / action["eval_file"])
         ev = json.loads(ef.read_text())
+        exp = "eval_" + str(ev.get("name", "unnamed"))
+        existing = find_existing(exp, str(ef))
+        if existing:
+            run_id = existing
+            print("QLAB_RESULT " + json.dumps({"run_id": run_id, "exp_name": exp,
+                                               "spec_hash": h, "reused": True}))
+            return run_id
         run_id, exp, metrics = _log_eval(ev, tags, {"eval.json": str(ef)})
     elif kind == "hang":
         import time as _time

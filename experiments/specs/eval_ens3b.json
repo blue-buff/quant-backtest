@@ -1,0 +1,9 @@
+{
+  "exp_id": "eval_ens3b_dupcheck",
+  "base": {"note": "harness dedupe test base"},
+  "overrides": {},
+  "changes": "同 eval 文件的第二个 spec：harness 应 detect 并 reuse 现有 run",
+  "action": {"kind": "eval_existing", "eval_file": "results/eval/all10d_ens3_all.json"},
+  "runner": "local",
+  "timeout_min": 5
+}

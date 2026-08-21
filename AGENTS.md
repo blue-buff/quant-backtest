@@ -41,8 +41,9 @@ docker exec -i hermes-1679f5b2 sh -c 'cd /root/quant && python -m pipeline.queue
 docker exec -i hermes-1679f5b2 sh -c 'cd /root/quant && python -m pipeline.queue run --batch xxx --once'
 ~~~
 
-- 查台账：python -m pipeline.board（导出 results/board.csv）或
-  docker exec -i -w /root/quant hermes-1679f5b2 mlflow runs search --experiment-name <name>。
+- 查台账：python -m pipeline.board（导出 results/board.csv，主入口）或 mlflow CLI
+  （3.x 语法注意：先 export MLFLOW_TRACKING_URI=sqlite:////root/quant/mlflow-server/mlflow.db，
+  用 mlflow experiments search 找 id，再 mlflow runs list --experiment-id <id>）。
 - 新实验流程：写 spec（最小必填 exp_id + base，推荐补 changes 和 expectation）
   -> 放进 batch -> submit -> run --once -> status 核验 -> 入账完成。
 - spec 规则：exp_id 全局唯一；base 用 "ref:xxx" 引用 experiments/refs/；
