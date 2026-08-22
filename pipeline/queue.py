@@ -363,11 +363,16 @@ def retry(batch_id=None, include_blocked=False, job_ids=None):
         seen.add(r["spec_hash"])
         picked.append(r)
     for r in picked:
-        force_local = r["status"] == "blocked"
+        # blocked -> local (old semantics), EXCEPT spark jobs: they keep their
+        # runner so a fixed transport can be retried as spark.
+        force_local = r["status"] == "blocked" and r["runner"] != "spark"
+        if r["status"] == "blocked":
+            reason = ("requeued by retry (blocked, runner kept)"
+                      if r["runner"] == "spark" else "requeued by retry (blocked->local)")
+        else:
+            reason = "requeued by retry"
         try:
-            _requeue([r], conn,
-                     "requeued by retry (blocked->local)" if force_local else "requeued by retry",
-                     force_local=force_local)
+            _requeue([r], conn, reason, force_local=force_local)
         except sqlite3.IntegrityError:
             continue
     conn.commit()

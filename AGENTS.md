@@ -17,12 +17,22 @@ docker exec -i -w /root/quant hermes-1679f5b2 python -m pipeline.queue status
   往容器传文件用 docker cp，例如 docker cp "D:/quant_backup/pipeline" hermes-1679f5b2:/root/quant/。
 - 4090D 远程机（song@10.110.12.99）：默认不动。只有用户明确说"上远程"才可碰，
   且只碰 C:/Users/song/qbt_work，不碰系统、不用 GPU、不杀别的进程。
-- DGX Spark 远程机（GB10，128GB，目标 runner="spark"）：传输层已代码完成（P6 v1），
-  SSH 留空待配。pipeline/remote.py 读 QLAB_SPARK_SSH（user@host）/ QLAB_SPARK_WORKDIR /
-  QLAB_SPARK_IMAGE 三个环境变量；流程 = git archive 打包 → scp → 远端 docker exec 跑
-  harness --compute-only（只算不记账）→ rsync 回传 results/runs/<exp_id> → 本地
-  harness import 记账（sqlite 单写者不变）。SSH 未配置时 runner="spark" 的任务会
-  blocked（占位行为，不是故障）；拿到机器信息后填 QLAB_SPARK_SSH 即启用。
+- DGX Spark 远程机（GB10 128GB，容器内 nvidia-smi 可见，CUDA 13.0）：已实测跑通
+  （p6_spark_hs300_10d, job 33）。链路 = ssh -J song@10.110.12.99 -p 2223 dev@10.0.0.5，
+  落点直接是计算容器（无 docker exec）。上传 ~2MB/s、下载 ~6MB/s（家用带宽）。
+  · dispatcher 启动须带环境变量（host 侧 MSYS_NO_PATHCONV=1 防路径转换）：
+    QLAB_SPARK_SSH=dev@10.0.0.5 QLAB_SPARK_SSH_PORT=2223 QLAB_SPARK_JUMP=song@10.110.12.99
+    QLAB_SPARK_WORKDIR=/home/dev/quant
+    QLAB_SPARK_PYTHON=/home/dev/.local/share/mamba/envs/quant/bin/python
+  · 流程 = git archive 打包 → scp → 远端解包 → 远端 harness --compute-only（取数/执行器/
+    契约检查/固定测试器，只算不记账）→ 远端 tar → scp 回传 → 本地 harness import 记账
+    （sqlite 单写者不变）。
+  · 远端环境：micromamba 环境 quant（conda-forge + qlib/pyqlib 0.9.7 源码编译，aarch64；
+    注意 PyPI 上 qlib 项目停更在 0.0.2.dev*，0.9.x 以 pyqlib 包名发布且无 aarch64 wheel）；
+    数据 bins 在 /home/dev/quant/qlib_data（QLAB_QLIB_DATA=/home/dev/quant）。
+  · 坑位记录：远端无 rsync（回传用 tar+scp 单流）；远端无 sudo、无 bzip2；
+    retry --blocked 对 spark 任务保留 runner（不再强制回 local）。
+  · SSH 未配置时 runner="spark" 任务 blocked（占位行为，不是故障）。
 - GitHub 备份：blue-buff/quant-backtest（main）。push token 从主机拿：gh auth token。
 
 ## 2. 铁律（不可违背）
