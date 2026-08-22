@@ -118,10 +118,12 @@ def _fetch_matrix(cfg, start_time, end_time, cache_name):
     for i in range(0, len(days), SLICE_DAYS):
         s0 = days[i]
         s1 = days[min(i + SLICE_DAYS, len(days)) - 1]
+        # infer_processors=[] skips fit-window feature materialization per slice
+        # (DK_L features are unaffected: learn processors only touch the label).
         h = Alpha158(instruments=cfg["instruments"], start_time=s0,
                      end_time=s1, fit_start_time=cfg["fit_start_time"],
                      fit_end_time=cfg["fit_end_time"], learn_processors=LEARN_PROCESSORS,
-                     label=[cfg["label_formula"]])
+                     infer_processors=[], label=[cfg["label_formula"]])
         data = h.fetch(col_set=["feature", "label"], data_key=DataHandlerLP.DK_L)
         feat64 = data["feature"]
         lab = data["label"].iloc[:, 0]
