@@ -96,37 +96,48 @@ def _resolve(eff, spec):
 
 
 def _fetch_matrix(cfg, start_time, end_time, cache_name):
-    """Fetch (feature|label) -> DataFrame with y column, via parquet cache."""
+    """Fetch (feature|label) -> DataFrame with y column, via parquet cache.
+
+    Memory strategy (container cgroup = 12GB): the all-market float64 feature
+    matrix (~4GB) is copied several times inside qlib's processor pipeline, which
+    OOMs when fetched in one piece. So the window is fetched in calendar slices
+    (one handler per slice; qlib caches the raw loaded data in-process, so only
+    the first handler pays the loading cost), each slice converted to float32
+    and appended to the parquet file immediately."""
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     cache_path = CACHE_DIR / (cache_name + ".parquet")
     if cache_path.exists():
         return pd.read_parquet(cache_path)
     from qlib.contrib.data.handler import Alpha158
     from qlib.data.dataset.handler import DataHandlerLP
-    h = Alpha158(instruments=cfg["instruments"], start_time=start_time,
-                 end_time=end_time, fit_start_time=cfg["fit_start_time"],
-                 fit_end_time=cfg["fit_end_time"], learn_processors=LEARN_PROCESSORS,
-                 label=[cfg["label_formula"]])
-    data = h.fetch(col_set=["feature", "label"], data_key=DataHandlerLP.DK_L)
-    feat64 = data["feature"]
-    lab = data["label"].iloc[:, 0]
-    del data
-    # chunked float32 conversion + parquet write (all-market float64 matrix is ~5GB;
-    # naive astype + to_parquet would peak over the container memory limit)
     import pyarrow as pa
     import pyarrow.parquet as pq
+    days = pd.bdate_range(start_time, end_time)
+    SLICE_DAYS = 180
     writer = None
-    CHUNK = 400000
-    for s in range(0, len(feat64), CHUNK):
-        sub = feat64.iloc[s:s + CHUNK].astype(np.float32)
-        chunk = sub.join(lab.iloc[s:s + CHUNK].rename("y"))
-        table = pa.Table.from_pandas(chunk)
-        if writer is None:
-            writer = pq.ParquetWriter(cache_path, table.schema)
-        writer.write_table(table)
-        del sub, chunk, table
+    for i in range(0, len(days), SLICE_DAYS):
+        s0 = days[i]
+        s1 = days[min(i + SLICE_DAYS, len(days)) - 1]
+        h = Alpha158(instruments=cfg["instruments"], start_time=s0,
+                     end_time=s1, fit_start_time=cfg["fit_start_time"],
+                     fit_end_time=cfg["fit_end_time"], learn_processors=LEARN_PROCESSORS,
+                     label=[cfg["label_formula"]])
+        data = h.fetch(col_set=["feature", "label"], data_key=DataHandlerLP.DK_L)
+        feat64 = data["feature"]
+        lab = data["label"].iloc[:, 0]
+        del data, h
+        CHUNK = 400000
+        for s in range(0, len(feat64), CHUNK):
+            sub = feat64.iloc[s:s + CHUNK].astype(np.float32)
+            chunk = sub.join(lab.iloc[s:s + CHUNK].rename("y"))
+            table = pa.Table.from_pandas(chunk)
+            if writer is None:
+                writer = pq.ParquetWriter(cache_path, table.schema)
+            writer.write_table(table)
+            del sub, chunk, table
+        del feat64, lab
+        print("cache slice %s..%s done" % (s0.date(), s1.date()), flush=True)
     writer.close()
-    del feat64, lab
     return pd.read_parquet(cache_path)
 
 
