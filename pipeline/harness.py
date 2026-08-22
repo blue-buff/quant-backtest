@@ -23,6 +23,30 @@ def git_commit():
     except Exception:
         return ""
 
+
+CODE_EXTENSIONS = (".py", ".yaml", ".yml", ".mjs", ".js", ".ts", ".sh", ".ps1", ".toml")
+
+def git_dirty_code():
+    """Code changes not yet in any commit (tracked modifications or untracked
+    code files). The ledger tag qlab.git must reference the commit that actually
+    produced the logged result, so logging is refused while code changes sit
+    uncommitted; the operator must create a NEW commit id first, then retry."""
+    try:
+        out = subprocess.run(["git", "status", "--porcelain"], cwd=str(QLAB_ROOT),
+                             capture_output=True, text=True).stdout
+    except Exception:
+        return []
+    dirty = []
+    for line in out.splitlines():
+        if len(line) < 4:
+            continue
+        path = line[3:].strip().strip('"')
+        if " -> " in path:
+            path = path.split(" -> ")[-1].strip().strip('"')
+        if path.lower().endswith(CODE_EXTENSIONS) and not path.startswith("results/"):
+            dirty.append(path)
+    return dirty
+
 def _log_legacy(meta, tags, artifacts, fallback_name=""):
     name = meta.get("name") or fallback_name or "unnamed"
     exp = "legacy_" + str(name)
@@ -108,6 +132,14 @@ def run(spec_path, job_id=None, batch_id=None):
         # The spec file changed after submit; running it would break reproducibility.
         sys.stderr.write("QLAB_SPEC_DRIFT expected=%s actual=%s\n" % (expected, h))
         sys.exit(2)
+    dirty = git_dirty_code()
+    if dirty:
+        shown = ",".join(dirty[:10])
+        if len(dirty) > 10:
+            shown += ",...(+%d more)" % (len(dirty) - 10)
+        print("QLAB_UNCOMMITTED_CODE " + shown, file=sys.stderr)
+        print("uncommitted code changes detected: commit them as a NEW commit id first, then retry the job (qlab.git must reference the code that produced the result)", file=sys.stderr)
+        sys.exit(3)
     action = spec.get("action") or {"kind": "smoke"}
     kind = action.get("kind", "smoke")
     tags = registry.std_tags(h, batch_id=batch_id, source="harness")
