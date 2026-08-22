@@ -348,7 +348,7 @@ metrics.json / pred.parquet——入口是工具，不是规则。读后写一�
 
 ---
 
-## 13. As-built 状态（构建进度与偏差登记，2026-08-21 评审后更新）
+## 13. As-built 状态（构建进度与偏差登记，2026-08-22 P0-4 后更新）
 
 以代码为准。已完成与设计承诺的对应关系：
 
@@ -361,7 +361,13 @@ metrics.json / pred.parquet——入口是工具，不是规则。读后写一�
   '<epoch> <pid>'；heal 验活 PID（含 /proc 僵尸判定）后才动手，心跳缺失拒判（unknown）；
   超时 SIGTERM→SIGKILL 杀进程组并台账闭环；spec 漂移拒跑（QLAB_SPEC_DRIFT）；
   retry/unblock 打通 blocked 出路；notify 全量排空不丢事件。
-- harness.py：smoke / log_legacy / eval_existing / sleep_ok / hang / crash 六种 action。
+- harness.py：smoke / log_legacy / eval_existing / train / sleep_ok / hang / crash 七种 action。
+- trainer.py（P0-4 新增）：train action 真实训练。Alpha158 特征（parquet 缓存，按配置 hash 命名）→
+  每种子 LightGBM（valid 早停）→ 样本外分块预测 → rank_mean 集成 → 产物落 results/runs/<exp_id>/。
+  已实测：p2r_zz500_10d 全流程 done（RankIC 0.0385, p=0.034, 385 天）；p2r_all10d_ens3 基线复跑中。
+- metrics.py（P0-4 新增）：核心 5 项指标（§4.1 形状）+ 全量（bootstrap p/deciles/季度/月度），
+  逻辑与 legacy eval_pred.py 同源；core_metrics.json 含 expectation 对照结论。
+- harness.py 另含（另一 agent 加）：未提交代码门禁 git_dirty_code（QLAB_UNCOMMITTED_CODE，exit 3）。
 - backup.py：snap 含 jobs.db/mlflow.db 在线一致性副本 + run 制品 + manifest.json；
   push 只追踪最新 zip。
 - board.py：--json --formal 视图（FINISHED 非 smoke 的正式研究行）。
@@ -369,12 +375,13 @@ metrics.json / pred.parquet——入口是工具，不是规则。读后写一�
 
 ### 13.2 已知差距（设计有、代码没有）
 
-1. **metrics.py 缺失**——设计 §4 的核心 5 项指标自动计算无实现。
-2. **harness 无真实训练 action**——spec→训练→预测→metrics.json 闭环仍是纸上的；
-   真实训练继续走旧脚本 + backfill 入账（AGENTS §3 P1 过渡路线）。
-3. spec 校验器（exp_id 唯一 / base 可解析 / 结构合法）未实现，只有 load/merge/hash。
-4. 偏差记录 deviations 落点未实现（设计 §10.4）；review 结果不进 run artifact；claims 联动未实现。
-5. 失败自动重试（1 次）未实现，只有手动 retry；资源声明/背压调度（§9）未实现。
-6. results/runs/<exp_id>/{effective_config, metrics.json, review.json, pred.parquet} 产物布局未实现。
-7. 远程 runner（§9 远程机）未启用：runner!=local 一律 blocked，unblock 才能强制回本地。
-8. 桥在主机无自动启动（重启后需手动拉起），长驻通知依赖人工值守。
+1. spec 校验器（exp_id 唯一 / base 可解析 / 结构合法）未实现，只有 load/merge/hash。
+2. 偏差记录 deviations 落点未实现（设计 §10.4）；review 结果不进 run artifact；claims 联动未实现。
+3. 失败自动重试（1 次）未实现，只有手动 retry；资源声明/背压调度（§9）未实现。
+4. 产物布局部分实现：results/runs/<exp_id>/ 有 pred/label/meta/metrics/core/work，缺 review.json
+   与 pred.parquet（现为 pkl，legacy 同源口径）。
+5. 远程 runner（§9 远程机）未启用：runner!=local 一律 blocked，unblock 才能强制回本地。
+6. 桥在主机无自动启动（重启后需手动拉起），长驻通知依赖人工值守。
+7. 已知口径偏差（记录在 run meta.note）：train action 走 learn-processor 特征路径（与
+   scripts/train_allmarket.py 完全一致，保证与 legacy 数字可比）；ref 里的 infer_processors
+   暂未应用，未来要做 infer 口径的实验需先对齐此差异。

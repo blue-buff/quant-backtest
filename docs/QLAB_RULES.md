@@ -85,14 +85,23 @@ docker exec -i hermes-1679f5b2 sh -c 'cd /root/quant && python -m pipeline.regis
   · dispatcher 确认死亡 -> 自动 heal（杀孤儿进程组 + 台账 run 置 FAILED）+ 通知会话；
   · 收到【QLab 队列通知】消息时按本节三板斧排查，修复后重新 submit；
   · 会话 id 存在 D:\quant_backup\notify\session.txt，换新会话时要更新（否则通知找不到家）。
-- P1 完成前，真实训练仍用旧脚本 scripts/run_exps.py 跑，跑完用
-  python -m pipeline.harness backfill 把结果补进台账（不重跑、不改数字）。
+- 真实训练走 train action（P0-4 已上线）：spec 写 {"action": {"kind": "train", ...}}，
+  base 用 "ref:xxx" 继承基线配置（dataset/label/model/seeds/ensemble），overrides 改单变量。
+  submit 后队列自动：建 Alpha158 特征（parquet 缓存，cache/ 目录，重跑直读）→ 每种子训
+  LightGBM（valid 早停）→ 样本外分块预测 → rank_mean 集成 → 全量指标（pipeline.metrics，
+  核心 5 项 rankic{mean,std,ir,p_value} + hit{rate,top_bottom_mean} + 结论对照 expectation）。
+  产物：results/runs/<exp_id>/{pred_matrix.pkl, label_matrix.pkl, meta.json, metrics.json,
+  core_metrics.json, work.json}，全部入台账 artifacts。
+  参考示例：experiments/specs/p2r_zz500_10d.json（单种子冒烟）与 p2r_all10d_ens3.json（基线复跑）。
+  写 expectation 字段（如 {"rankic_mean_min": 0.05, "p_le0_max": 0.05}）会自动对照给结论。
+- backfill 仅用于历史实验入账；新实验一律走 train action，不要再用旧脚本。
 
 ## 4. 数据与版本
 
 - 数据 v3 = 2021-06-01 ~ 2026-08-20；bin 在 /root/.qlib/qlib_data（含 hs300/zz500/all 三池）。
 - 尾部更新用 scripts/update_tail.py（增量，>=2 行才更新）；指数成分用 index_stock_cons_sina。
-- 特征缓存（P1 起）：/root/quant/cache/*.parquet，重跑直读不重算。
+- 特征缓存（已上线）：/root/quant/cache/*.parquet（train/test 两套矩阵，按配置 hash 命名），
+  重跑直读不重算；改 handler/label/窗口后自动生成新 key。
 - 所有 run 必须带 qlab.data_version 和 qlab.git tag（harness 自动写）。
 
 ## 5. 评审与知识库
@@ -122,7 +131,8 @@ docker exec -i -w /root/quant hermes-1679f5b2 python -m pipeline.backup push --m
 ## 7. 已趟平的坑（别再踩）
 
 - 主机 shell 引号地狱：docker exec 外层用单引号，内层不要再用单引号；
-  复杂脚本用 heredoc（docker exec -i ... python - <<'EOF' ... EOF）。
+  复杂脚本用 heredoc（docker exec -i ... python - <<'EOF' ... EOF）；
+  heredoc 里写换行符不要用 \n（会被传输层吃成真换行），用 chr(10)。
 - MSYS 吃反斜杠；远程 Windows 路径一律用正斜杠。
 - 远程 Windows：OpenSSH 会话关闭会杀子进程，必须用 Scheduled Task；
   权限问题用 icacls 授权；远程 pyqlib 配 numpy 1.26.4（numpy 2.5 会崩）。
