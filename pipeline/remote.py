@@ -134,7 +134,7 @@ def dispatch(row):
                "QLAB_QLIB_DATA=%s OMP_NUM_THREADS=8 "
                "OPENBLAS_NUM_THREADS=8 MKL_NUM_THREADS=8"
                % (workdir, spec_hash, commit, workdir))
-        run_cmd = ("cd %s/repo && timeout %d %s %s -m pipeline.harness run %s --compute-only"
+        run_cmd = ("cd %s/repo && timeout %d env %s %s -m pipeline.harness run %s --compute-only"
                    % (workdir, timeout_min * 60, env, cfg["python"], spec_path))
         r = _ssh(cfg, run_cmd, timeout_min * 60 + 120)
         if r.returncode != 0:
