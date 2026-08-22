@@ -1,21 +1,27 @@
-"""Remote runner (DGX Spark docker) -- v1 code-complete, SSH config intentionally
-blank (user-approved: leave it empty until the machine details arrive).
+"""Remote runner (DGX Spark container) -- P6 v2 (measured link).
 
-Config (env): QLAB_SPARK_SSH=user@host / QLAB_SPARK_WORKDIR (default
-/root/quant-spark) / QLAB_SPARK_IMAGE (default qlab:latest). The remote image
-must mount the qlib data bins at /root/.qlib (same layout as the local pool).
+Measured 2026-08-22: ssh -J song@10.110.12.99 -p 2223 dev@10.0.0.5 lands
+DIRECTLY inside the compute container (hostname is a docker id), so there is no
+docker exec step. Upload ~2.0 MB/s, download ~6.1 MB/s.
+
+Config (env):
+  QLAB_SPARK_SSH      dev@10.0.0.5        (blank = not configured)
+  QLAB_SPARK_SSH_PORT 2223                (default 22)
+  QLAB_SPARK_JUMP     song@10.110.12.99   (ProxyJump; blank = direct)
+  QLAB_SPARK_WORKDIR  /home/dev/quant     (remote workdir, must be writable)
+  QLAB_SPARK_PYTHON   /home/dev/quant-venv/bin/python   (remote interpreter)
 
 Flow (dispatch, called by queue._execute for runner="spark"):
   1. pack: git archive of HEAD -> results/remote_pack/<commit>.tar.gz
   2. scp tarball to <workdir>/packs/
-  3. ssh: extract to <workdir>/repo; docker exec <image> with QLAB_ROOT=<workdir>/repo,
-     QLAB_EXPECTED_HASH, QLAB_EXPECTED_COMMIT -> harness run <spec> --compute-only
-     (executor contract + contract check + fixed tester on the remote; NO ledger)
-  4. rsync <workdir>/repo/results/runs/<exp_id>/ back to the local results/runs/
-  5. local: harness import <run_dir> -> ledger row (sqlite single-writer kept local)
+  3. ssh: extract to <workdir>/repo
+  4. ssh: remote harness run <spec> --compute-only with QLAB_ROOT=<workdir>/repo,
+     QLAB_EXPECTED_HASH, QLAB_EXPECTED_COMMIT, QLAB_QLIB_DATA=<workdir>/qlib-data
+     (data menu + executor + contract check + fixed tester on the remote; NO ledger)
+  5. rsync <workdir>/repo/results/runs/<exp_id>/ back to local results/runs/
+  6. local: harness import <run_dir> -> ledger row (sqlite single-writer stays local)
 
-While QLAB_SPARK_SSH is blank, dispatch returns blocked=True and the queue
-records the job as blocked (placeholder behavior, not a failure).
+While QLAB_SPARK_SSH is blank, dispatch returns blocked=True (placeholder behavior).
 """
 import hashlib, json, os, subprocess, sys
 from pathlib import Path
@@ -24,15 +30,30 @@ from . import QLAB_ROOT
 
 PACK_DIR = QLAB_ROOT / "results" / "remote_pack"
 
+_SSH_OPTS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=15",
+             "-o", "StrictHostKeyChecking=accept-new"]
+
 
 def spark_config():
-    return {"ssh": os.environ.get("QLAB_SPARK_SSH", "").strip(),
-            "workdir": os.environ.get("QLAB_SPARK_WORKDIR", "/root/quant-spark").strip(),
-            "image": os.environ.get("QLAB_SPARK_IMAGE", "qlab:latest").strip()}
+    return {
+        "ssh": os.environ.get("QLAB_SPARK_SSH", "").strip(),
+        "port": os.environ.get("QLAB_SPARK_SSH_PORT", "22").strip(),
+        "jump": os.environ.get("QLAB_SPARK_JUMP", "").strip(),
+        "workdir": os.environ.get("QLAB_SPARK_WORKDIR", "/home/dev/quant").strip(),
+        "python": os.environ.get("QLAB_SPARK_PYTHON", "python3").strip(),
+    }
 
 
 def configured():
     return bool(spark_config()["ssh"])
+
+
+def _ssh_cmd(cfg):
+    cmd = ["ssh"] + _SSH_OPTS
+    if cfg["jump"]:
+        cmd += ["-J", cfg["jump"]]
+    cmd += ["-p", cfg["port"], cfg["ssh"]]
+    return cmd
 
 
 def pack():
@@ -52,25 +73,41 @@ def pack():
             raise RuntimeError("git archive failed: %s" % r.stderr[-200:])
         with open(PACK_DIR / "manifest.sha256", "a") as f:
             f.write("%s  %s\n" % (hashlib.sha256(out.read_bytes()).hexdigest(),
-                                  out.name))
+                                   out.name))
     return out, commit
 
 
 def _ssh(cfg, cmd, timeout):
-    return subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=15",
-                           cfg["ssh"], cmd],
+    return subprocess.run(_ssh_cmd(cfg) + [cmd],
                           capture_output=True, text=True, timeout=timeout)
 
 
+def _scp(cfg, src, dst):
+    cmd = ["scp"] + _SSH_OPTS
+    if cfg["jump"]:
+        cmd += ["-J", cfg["jump"]]
+    cmd += ["-P", cfg["port"], src, dst]
+    return subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+
+
+def _rsync(cfg, src, dst):
+    ssh_remote = "ssh " + " ".join(_SSH_OPTS)
+    if cfg["jump"]:
+        ssh_remote += " -J " + cfg["jump"]
+    ssh_remote += " -p " + cfg["port"]
+    return subprocess.run(["rsync", "-a", "--delete", "-e", ssh_remote, src, dst],
+                          capture_output=True, text=True, timeout=600)
+
+
 def dispatch(row):
-    """Run one job's compute phase on the DGX Spark docker container, then import
-    the results into the local ledger. Returns {"ok": True, "run_id": ...} on
+    """Run one job's compute phase on the DGX Spark container, then import the
+    results into the local ledger. Returns {"ok": True, "run_id": ...} on
     success; {"blocked": True, "reason": ...} while unconfigured; otherwise
     {"ok": False, "reason": ...}."""
     cfg = spark_config()
     if not configured():
         return {"ok": False, "blocked": True,
-                "reason": "spark runner not configured: QLAB_SPARK_SSH is blank (v1 placeholder)"}
+                "reason": "spark runner not configured: QLAB_SPARK_SSH is blank"}
     exp_id = str(row.get("exp_id", ""))
     spec_path = str(row.get("spec_path", ""))
     spec_hash = str(row.get("spec_hash", ""))
@@ -78,10 +115,12 @@ def dispatch(row):
     try:
         tarball, commit = pack()
         workdir = cfg["workdir"]
-        _ssh(cfg, "mkdir -p %s/packs %s/repo" % (workdir, workdir), 60)
-        r = subprocess.run(["scp", "-o", "BatchMode=yes", str(tarball),
-                            cfg["ssh"] + ":" + workdir + "/packs/"],
-                           capture_output=True, text=True, timeout=300)
+        r = _ssh(cfg, "mkdir -p %s/packs %s/repo %s/qlib-data %s/repo/results"
+                      % (workdir, workdir, workdir, workdir), 60)
+        if r.returncode != 0:
+            return {"ok": False, "blocked": False,
+                    "reason": "remote mkdir failed: %s" % r.stderr[-300:]}
+        r = _scp(cfg, str(tarball), cfg["ssh"] + ":" + workdir + "/packs/")
         if r.returncode != 0:
             return {"ok": False, "blocked": False,
                     "reason": "scp pack failed: %s" % r.stderr[-300:]}
@@ -90,25 +129,22 @@ def dispatch(row):
         if r.returncode != 0:
             return {"ok": False, "blocked": False,
                     "reason": "remote extract failed: %s" % r.stderr[-300:]}
-        run_cmd = ("docker exec -e QLAB_ROOT=%s/repo -e QLAB_EXPECTED_HASH=%s "
-                   "-e QLAB_EXPECTED_COMMIT=%s -e OMP_NUM_THREADS=8 "
-                   "-e OPENBLAS_NUM_THREADS=8 -e MKL_NUM_THREADS=8 %s "
-                   "python -m pipeline.harness run %s --compute-only"
-                   % (workdir, spec_hash, commit, cfg["image"], spec_path))
-        r = _ssh(cfg, "cd %s/repo && timeout %d %s"
-                      % (workdir, timeout_min * 60, run_cmd),
-                 timeout_min * 60 + 120)
+        env = ("QLAB_ROOT=%s/repo QLAB_EXPECTED_HASH=%s QLAB_EXPECTED_COMMIT=%s "
+               "QLAB_QLIB_DATA=%s/qlib-data OMP_NUM_THREADS=8 "
+               "OPENBLAS_NUM_THREADS=8 MKL_NUM_THREADS=8"
+               % (workdir, spec_hash, commit, workdir))
+        run_cmd = ("cd %s/repo && timeout %d %s %s -m pipeline.harness run %s --compute-only"
+                   % (workdir, timeout_min * 60, env, cfg["python"], spec_path))
+        r = _ssh(cfg, run_cmd, timeout_min * 60 + 120)
         if r.returncode != 0:
             return {"ok": False, "blocked": False,
                     "reason": "remote compute failed rc=%s: %s" % (
                         r.returncode, (r.stdout + r.stderr)[-600:])}
         local_run = QLAB_ROOT / "results" / "runs" / exp_id
         local_run.parent.mkdir(parents=True, exist_ok=True)
-        r = subprocess.run(["rsync", "-a", "--delete",
-                            cfg["ssh"] + ":" + workdir + "/repo/results/runs/"
-                            + exp_id + "/",
-                            str(local_run) + "/"],
-                           capture_output=True, text=True, timeout=600)
+        r = _rsync(cfg,
+                   cfg["ssh"] + ":" + workdir + "/repo/results/runs/" + exp_id + "/",
+                   str(local_run) + "/")
         if r.returncode != 0:
             return {"ok": False, "blocked": False,
                     "reason": "rsync back failed: %s" % r.stderr[-300:]}

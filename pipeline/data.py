@@ -8,7 +8,7 @@ comparable on the board.
 
 CLI: python -m pipeline.data ensure <spec_path>   (build/verify caches)
 """
-import argparse, hashlib, json, time
+import argparse, hashlib, json, os, time
 from pathlib import Path
 
 import numpy as np
@@ -18,11 +18,18 @@ from . import QLAB_ROOT, DATA_VERSION
 
 CACHE_DIR = QLAB_ROOT / "cache"
 
-POOL_MAP = {
-    "all": ("/root/.qlib/qlib_data/cn_data_all", "all"),
-    "hs300": ("/root/.qlib/qlib_data/cn_data", "csi300"),
-    "zz500": ("/root/.qlib/qlib_data/cn_data_zz500", "csi500"),
-}
+def _pool_map():
+    """Pool -> (provider_uri, default instruments). The data root follows
+    QLAB_QLIB_DATA so remote containers (no /root access) can point elsewhere."""
+    base = os.environ.get("QLAB_QLIB_DATA", "/root/.qlib").rstrip("/")
+    return {
+        "all": (base + "/qlib_data/cn_data_all", "all"),
+        "hs300": (base + "/qlib_data/cn_data", "csi300"),
+        "zz500": (base + "/qlib_data/cn_data_zz500", "csi500"),
+    }
+
+
+POOL_MAP = _pool_map()
 
 HANDLER_CLASSES = ("Alpha158", "Alpha360")
 TASKS = ("regression", "classification")
