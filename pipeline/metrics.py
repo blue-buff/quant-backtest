@@ -1,11 +1,12 @@
-"""Core metrics for trained models (design doc §4).
+"""Fixed tester (P5): the ONLY component that computes ledger metrics.
 
-Logic mirrors scripts/eval_pred.py (legacy-proven): per-day Pearson IC + Spearman
-RankIC on the out-of-sample segment, hit rate, decile monotonicity, day-level
-bootstrap (H0: mean non-overlap RankIC <= 0), quarterly breakdown.
+Runs on pred/label pkl pairs produced by executors + the pipeline data layer.
+regression: per-day Pearson IC + Spearman RankIC, hit rate, decile monotonicity,
+day-level bootstrap (H0: mean non-overlap RankIC <= 0), quarterly breakdown.
+classification: per-day rank-based AUC, bootstrap (H0: mean AUC <= 0.5).
+core_metrics: design doc core shape + generic expectation check.
 
-Core 5 (auto-computed every run): rankic{mean,std,ir,p_value}, hit{rate,top_bottom_mean},
-meta, conclusion. CLI: compute (full json from pred/label pkls).
+CLI: python -m pipeline.metrics --pred <pkl> --label <pkl> --h <n> [--task cls]
 """
 import argparse, json
 from pathlib import Path
@@ -91,11 +92,14 @@ def bootstrap_ci(x, n_boot=10000, seed=42):
 
 
 def compute_full(pred_path, label_path, h=10):
-    """Full metrics dict from long pred/label pkls. h = label horizon (non-overlap stride)."""
+    """Regression tester. h = label horizon (non-overlap stride)."""
     score, label = load_wide(pred_path, label_path)
     daily = per_day_stats(score, label)
+    if len(daily) == 0:
+        raise ValueError("no valid evaluation days (empty pred/label intersection?)")
     daily_ng = daily.iloc[::h] if h > 1 else daily
     out = {
+        "task": "regression",
         "h": int(h),
         "n_days": int(len(daily)),
         "n_inst": int(score.shape[1]),
@@ -126,23 +130,135 @@ def compute_full(pred_path, label_path, h=10):
     return out
 
 
-def core_metrics(full, exp_id, run_id="", data_version="v3", expectation=None):
-    """Design doc §4.1 core-5 shape."""
+def per_day_auc(score, label, min_pos=5, min_neg=5):
+    """Per-day rank-based AUC (Mann-Whitney U normalized). Top label value = positive."""
+    rows = []
+    for dt in score.index:
+        s = score.loc[dt].to_numpy(float)
+        l = label.loc[dt].to_numpy(float)
+        mask = np.isfinite(s) & np.isfinite(l)
+        if mask.sum() < (min_pos + min_neg):
+            continue
+        s, l = s[mask], l[mask]
+        uniq = np.unique(l)
+        if len(uniq) < 2:
+            continue
+        pos = l == uniq[-1]
+        n_pos, n_neg = int(pos.sum()), int((~pos).sum())
+        if n_pos < min_pos or n_neg < min_neg:
+            continue
+        r = stats.rankdata(s)
+        auc = float((r[pos].mean() - (n_pos + 1) / 2) / n_neg)
+        rows.append({"date": dt, "n": int(mask.sum()), "n_pos": n_pos, "auc": auc})
+    return pd.DataFrame(rows)
+
+
+def _bootstrap_auc(aucs, n_boot=10000, seed=42, h0=0.5):
+    rng = np.random.default_rng(seed)
+    means = np.empty(n_boot)
+    for i in range(n_boot):
+        means[i] = rng.choice(aucs, size=aucs.size, replace=True).mean()
+    lo, hi = np.quantile(means, [0.025, 0.975])
+    return {"mean": float(aucs.mean()), "ci95_lo": float(lo), "ci95_hi": float(hi),
+            "p_le05": float(np.mean(means <= h0))}
+
+
+def compute_full_cls(pred_path, label_path):
+    """Classification tester: per-day AUC + bootstrap (H0: mean AUC <= 0.5)."""
+    score, label = load_wide(pred_path, label_path)
+    daily = per_day_auc(score, label)
+    if len(daily) == 0:
+        raise ValueError("no valid classification days (empty pred/label intersection?)")
+    aucs = daily["auc"].to_numpy()
+    return {
+        "task": "classification",
+        "n_days": int(len(daily)),
+        "n_inst": int(score.shape[1]),
+        "sample_window": [str(score.index.min())[:10], str(score.index.max())[:10]],
+        "mean_auc": float(aucs.mean()),
+        "auc_std": float(aucs.std()),
+        "auc_ir": float(aucs.mean() / aucs.std()) if aucs.std() > 0 else None,
+        "bootstrap_auc": _bootstrap_auc(aucs),
+        "mean_n_per_day": float(daily["n"].mean()),
+    }
+
+
+EXPECT_ALIASES = {
+    "rankic_mean": "nonoverlap_mean_rank_ic",
+    "rankic_ir": "nonoverlap_rank_icir",
+    "rankic_std": "rank_ic_std",
+    "p_le0": "bootstrap_rankic.p_le0",
+    "ic": "mean_ic",
+    "hit_rate": "hit_rate",
+    "auc_mean": "mean_auc",
+    "auc_p_le05": "bootstrap_auc.p_le05",
+}
+
+
+def _lookup(full, metric):
+    if metric in EXPECT_ALIASES:
+        metric = EXPECT_ALIASES[metric]
+    node = full
+    for part in metric.split("."):
+        if isinstance(node, dict) and part in node:
+            node = node[part]
+        else:
+            return None
+    return node if isinstance(node, (int, float)) and not isinstance(node, bool) else None
+
+
+def _check_expectation(full, expectation):
+    """Generic expectation check. Forms:
+    {"rankic_mean_min": 0.05, "p_le0_max": 0.05}          (legacy)
+    {"metric": "rankic_mean", "min": 0.05}                (generic, dotted paths ok)
+    [{"metric": ..., "min": ...}, ...]                    (list of generic checks)"""
+    if not expectation:
+        return "n/a"
+    checks = []
+    if isinstance(expectation, dict):
+        for k, v in expectation.items():
+            if k.endswith("_min"):
+                checks.append({"metric": k[:-4], "min": v})
+            elif k.endswith("_max"):
+                checks.append({"metric": k[:-4], "max": v})
+            elif k == "metric":
+                checks.append(expectation)
+    elif isinstance(expectation, list):
+        checks = [c for c in expectation if isinstance(c, dict)]
+    if not checks:
+        return "n/a"
+    ok = True
+    for c in checks:
+        val = _lookup(full, str(c.get("metric", "")))
+        if val is None:
+            ok = False
+            continue
+        if "min" in c and val < float(c["min"]):
+            ok = False
+        if "max" in c and val > float(c["max"]):
+            ok = False
+    return "met" if ok else "not_met"
+
+
+def core_metrics(full, exp_id, run_id="", data_version="v3", expectation=None,
+                 task="regression"):
+    """Design doc core shape + conclusion vs expectation."""
+    meta = {"exp_id": exp_id, "run_id": run_id, "data_version": data_version,
+            "sample_window": full["sample_window"], "n_days": full["n_days"],
+            "n_inst": full["n_inst"], "task": full.get("task", task)}
+    check = _check_expectation(full, expectation)
+    if full.get("task") == "classification":
+        text = "AUC %.4f (p<=0.5: %.3f, n=%d days)" % (
+            full["mean_auc"], full["bootstrap_auc"]["p_le05"], full["n_days"])
+        return {"meta": meta,
+                "auc": {"mean": full["mean_auc"], "ir": full["auc_ir"],
+                        "p_value": full["bootstrap_auc"]["p_le05"]},
+                "conclusion": {"text": text, "expectation_check": check}}
     text = "RankIC %.4f (p<=0: %.3f, n=%d non-overlap days)" % (
         full["nonoverlap_mean_rank_ic"], full["bootstrap_rankic"]["p_le0"],
         full["n_nonoverlap"])
-    check = "n/a"
-    if isinstance(expectation, dict):
-        ok = True
-        if "rankic_mean_min" in expectation and full["nonoverlap_mean_rank_ic"] < expectation["rankic_mean_min"]:
-            ok = False
-        if "p_le0_max" in expectation and full["bootstrap_rankic"]["p_le0"] > expectation["p_le0_max"]:
-            ok = False
-        check = "met" if ok else "not_met"
     return {
-        "meta": {"exp_id": exp_id, "run_id": run_id, "data_version": data_version,
-                 "sample_window": full["sample_window"], "n_days": full["n_days"],
-                 "n_inst": full["n_inst"]},
+        "meta": meta,
         "rankic": {"mean": full["nonoverlap_mean_rank_ic"], "std": full["rank_ic_std"],
                    "ir": full["nonoverlap_rank_icir"], "p_value": full["bootstrap_rankic"]["p_le0"]},
         "hit": {"rate": full["hit_rate"],
@@ -156,19 +272,26 @@ def main():
     ap.add_argument("--pred", required=True)
     ap.add_argument("--label", required=True)
     ap.add_argument("--h", type=int, default=10)
+    ap.add_argument("--task", choices=["regression", "classification"], default="regression")
     ap.add_argument("--name", default=None)
     ap.add_argument("--out", default=None)
     a = ap.parse_args()
-    full = compute_full(a.pred, a.label, a.h)
+    if a.task == "classification":
+        full = compute_full_cls(a.pred, a.label)
+    else:
+        full = compute_full(a.pred, a.label, a.h)
     out = a.out or (str(Path(a.pred).parent / "metrics.json"))
     with open(out, "w", encoding="utf-8") as f:
         json.dump(full, f, ensure_ascii=False, indent=2, default=str)
-    print(json.dumps({"rankic_mean": full["nonoverlap_mean_rank_ic"],
-                      "rankic_ir": full["nonoverlap_rank_icir"],
-                      "p_le0": full["bootstrap_rankic"]["p_le0"],
-                      "n_days": full["n_days"], "n_nonoverlap": full["n_nonoverlap"],
-                      "hit_rate": full["hit_rate"], "out": out},
-                     ensure_ascii=False))
+    if full.get("task") == "classification":
+        print(json.dumps({"auc_mean": full["mean_auc"], "auc_p_le05": full["bootstrap_auc"]["p_le05"],
+                          "n_days": full["n_days"], "out": out}, ensure_ascii=False))
+    else:
+        print(json.dumps({"rankic_mean": full["nonoverlap_mean_rank_ic"],
+                          "rankic_ir": full["nonoverlap_rank_icir"],
+                          "p_le0": full["bootstrap_rankic"]["p_le0"],
+                          "n_days": full["n_days"], "n_nonoverlap": full["n_nonoverlap"],
+                          "hit_rate": full["hit_rate"], "out": out}, ensure_ascii=False))
 
 
 if __name__ == "__main__":

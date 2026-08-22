@@ -1,8 +1,18 @@
-"""Execute one spec action and write the result into the ledger (MLflow)."""
-import argparse, json, os, subprocess, sys
+"""Execute one spec action and write the result into the ledger (MLflow).
+
+train action (P5 executor contract):
+  data ensure (fixed menu) -> executor subprocess -> contract check ->
+  fixed tester (pipeline.metrics, the ONLY metric source) -> ledger import.
+The pipeline does not inspect executor internals; the executor only reads
+pipeline-provided feature parquet and writes pred.pkl.
+"""
+import argparse, json, os, shutil, subprocess, sys
 from pathlib import Path
 from . import QLAB_ROOT, DATA_VERSION
 from . import registry, spec as specmod
+
+RUNS_DIR = QLAB_ROOT / "results" / "runs"
+
 
 def _write_runid_file(run_id):
     """Let the queue link/close the ledger run even if this process dies later."""
@@ -15,6 +25,7 @@ def _write_runid_file(run_id):
     except Exception:
         pass
 
+
 def git_commit():
     try:
         out = subprocess.run(["git", "rev-parse", "HEAD"], cwd=str(QLAB_ROOT),
@@ -25,6 +36,7 @@ def git_commit():
 
 
 CODE_EXTENSIONS = (".py", ".yaml", ".yml", ".mjs", ".js", ".ts", ".sh", ".ps1", ".toml")
+
 
 def git_dirty_code():
     """Code changes not yet in any commit (tracked modifications or untracked
@@ -46,6 +58,7 @@ def git_dirty_code():
         if path.lower().endswith(CODE_EXTENSIONS) and not path.startswith("results/"):
             dirty.append(path)
     return dirty
+
 
 def _log_legacy(meta, tags, artifacts, fallback_name=""):
     name = meta.get("name") or fallback_name or "unnamed"
@@ -76,6 +89,7 @@ def _log_legacy(meta, tags, artifacts, fallback_name=""):
     run_id = registry.log_run(exp, params, metrics, tags, artifacts)
     return run_id, exp, metrics
 
+
 def _log_eval(ev, tags, artifacts):
     exp = "eval_" + ev.get("name", "unnamed")
     params = {
@@ -102,6 +116,7 @@ def _log_eval(ev, tags, artifacts):
     run_id = registry.log_run(exp, params, metrics, tags, artifacts)
     return run_id, exp, metrics
 
+
 def find_existing(exp_name, source_file):
     """Return run_id if this experiment already has a run logged from the same source file.
     Matches on the source_file param (new runs) or the artifact basename (old runs)."""
@@ -122,6 +137,51 @@ def find_existing(exp_name, source_file):
         except Exception:
             pass
     return None
+
+
+def _flatten_metrics(full, task="regression"):
+    """Generic metric import: numeric leaves of metrics.json -> ledger keys,
+    plus the stable legacy key names so board/AGENTS views stay unchanged."""
+    out = {}
+    legacy = {
+        "rankic_mean": full.get("nonoverlap_mean_rank_ic"),
+        "rankic_std": full.get("rank_ic_std"),
+        "rankic_ir": full.get("nonoverlap_rank_icir"),
+        "ic": full.get("mean_ic"),
+        "icir": full.get("icir"),
+        "p_le0": (full.get("bootstrap_rankic") or {}).get("p_le0"),
+        "hit_rate": full.get("hit_rate"),
+        "n_days": full.get("n_days"),
+        "n_nonoverlap": full.get("n_nonoverlap"),
+        "top_bottom": (full.get("deciles") or {}).get("top_minus_bottom"),
+    }
+    if task == "classification":
+        legacy = {"auc_mean": full.get("mean_auc"),
+                  "auc_ir": full.get("auc_ir"),
+                  "auc_p_le05": (full.get("bootstrap_auc") or {}).get("p_le05"),
+                  "n_days": full.get("n_days"),
+                  "n_inst": full.get("n_inst")}
+    for k, v in legacy.items():
+        if v is not None:
+            try:
+                out[k] = float(v)
+            except (TypeError, ValueError):
+                pass
+
+    def walk(obj, path, depth):
+        if isinstance(obj, dict):
+            if depth < 3:
+                for k2, v2 in obj.items():
+                    walk(v2, path + str(k2) + ".", depth + 1)
+        elif isinstance(obj, (int, float)) and not isinstance(obj, bool):
+            try:
+                out[(path)[:-1]] = float(obj)
+            except (TypeError, ValueError):
+                pass
+
+    walk(full, "", 0)
+    return out
+
 
 def run(spec_path, job_id=None, batch_id=None):
     spec = specmod.load_spec(spec_path)
@@ -179,54 +239,107 @@ def run(spec_path, job_id=None, batch_id=None):
             return run_id
         run_id, exp, metrics = _log_eval(ev, tags, {"eval.json": str(ef)})
     elif kind == "train":
-        from . import trainer, metrics as metricsmod
-        run_dir, full, meta = trainer.run_train(spec, eff)
-        exp = spec.get("exp_id")
+        from . import data as datamod, executor as execmod, metrics as metricsmod
+        import pandas as pd
+        exp = str(spec.get("exp_id"))
+        run_dir = RUNS_DIR / exp
+        if run_dir.exists():
+            shutil.rmtree(run_dir)
+        run_dir.mkdir(parents=True, exist_ok=True)
+        act = spec.get("action") or {}
+        # ---- 1. data ensure (fixed menu, pipeline-owned) ----
+        d = datamod.ensure(spec, eff)
+        cfg = dict(d["cfg"])
+        cfg.update({
+            "model": eff.get("model", {}),
+            "seeds": list(eff.get("seeds") or [42]),
+            "ensemble": str(eff.get("ensemble") or "rank_mean(seeds)"),
+            "rounds": int(act.get("rounds", datamod.DEFAULTS["rounds"])),
+            "early_stopping": int(act.get("early_stopping", datamod.DEFAULTS["early_stopping"])),
+            "num_threads": int(act.get("num_threads", datamod.DEFAULTS["num_threads"])),
+            "save_models": bool(act.get("save_models", False)),
+        })
+        executor_name = str(act.get("executor") or execmod.DEFAULT_EXECUTOR)
+        cfg_path = run_dir / "executor_config.json"
+        cfg_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2, default=str),
+                            encoding="utf-8")
+        # ---- 2. executor (agent territory, subprocess) ----
+        rc, eout, eerr, esec = execmod.run_executor(
+            executor_name, cfg_path, d["train_pq"], d["test_pq"], run_dir)
+        (run_dir / "executor.log").write_text(
+            (eout or "") + "\n=== STDERR ===\n" + (eerr or ""), encoding="utf-8")
+        if rc != 0:
+            sys.stderr.write("executor %s failed rc=%s\n%s\n%s" % (
+                executor_name, rc, (eout or "")[-800:], (eerr or "")[-800:]))
+            sys.exit(4)
+        # ---- 3. contract check ----
+        rep = execmod.check_pred(run_dir / "pred.pkl", d["test_pq"])
+        (run_dir / "contract_report.json").write_text(
+            json.dumps(rep, ensure_ascii=False, indent=2), encoding="utf-8")
+        if not rep["ok"]:
+            sys.stderr.write("QLAB_CONTRACT_FAIL %s\n" % json.dumps(rep, ensure_ascii=False))
+            sys.exit(5)
+        # ---- 4. fixed tester: the ONLY metric source ----
+        pred_path = run_dir / "pred.pkl"
+        label_path = run_dir / "label_matrix.pkl"
+        test_df = pd.read_parquet(d["test_pq"])
+        test_df["y"].to_pickle(label_path)
+        del test_df
+        task = cfg["task"]
+        if task == "classification":
+            full = metricsmod.compute_full_cls(pred_path, label_path)
+        else:
+            full = metricsmod.compute_full(pred_path, label_path, h=cfg["horizon"])
+        (run_dir / "metrics.json").write_text(
+            json.dumps(full, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+        # ---- 5. ledger import (metrics come ONLY from the tester) ----
         params = {
-            "pool": str(meta["pool"]),
-            "seeds": json.dumps(meta["seeds"]),
-            "ensemble": str(meta["ensemble"]),
-            "label": str(meta["label"]),
-            "horizon": str(meta["horizon"]),
-            "model": json.dumps(meta["model"]),
-            "train_window": json.dumps(meta["train"]),
-            "valid_window": json.dumps(meta["valid"]),
-            "test_window": json.dumps(meta["test"]),
-            "total_seconds": str(meta["total_seconds"]),
+            "pool": str(cfg["pool"]),
+            "handler": str(cfg["handler_class"]),
+            "task": str(task),
+            "executor": str(executor_name),
+            "label": str(cfg["label_formula"]),
+            "horizon": str(cfg["horizon"]),
+            "seeds": json.dumps(cfg["seeds"]),
+            "model": json.dumps(cfg["model"]),
+            "train_window": json.dumps(cfg["train"]),
+            "valid_window": json.dumps(cfg["valid"]),
+            "test_window": json.dumps([cfg["test_start"], cfg["test_end"]]),
+            "data_key": str(d["train_key"]),
+            "executor_seconds": str(esec),
+            "coverage": json.dumps({k: rep[k] for k in
+                                    ("n_dates", "date_frac", "n_inst", "inst_frac", "nan_frac")}),
         }
-        lm = {
-            "rankic_mean": full["nonoverlap_mean_rank_ic"],
-            "rankic_std": full["rank_ic_std"],
-            "rankic_ir": full["nonoverlap_rank_icir"],
-            "ic": full["mean_ic"],
-            "icir": full["icir"],
-            "p_le0": full["bootstrap_rankic"]["p_le0"],
-            "hit_rate": full["hit_rate"],
-            "n_days": full["n_days"],
-            "n_nonoverlap": full["n_nonoverlap"],
-            "top_bottom": (full["deciles"] or {}).get("top_minus_bottom"),
-        }
-        metrics = {k: float(v) for k, v in lm.items() if v is not None}
-        for sr in meta["seed_runs"]:
-            if sr["valid_l2"] is not None:
-                metrics["valid_l2_seed%s" % sr["seed"]] = float(sr["valid_l2"])
-        tags["qlab.pool"] = str(meta["pool"])
-        tags["qlab.label_h"] = str(meta["horizon"])
-        tags["qlab.seeds"] = ",".join(str(s) for s in meta["seeds"])
+        metrics = _flatten_metrics(full, task=task)
+        tags["qlab.pool"] = str(cfg["pool"])
+        tags["qlab.handler"] = str(cfg["handler_class"])
+        tags["qlab.task"] = str(task)
+        tags["qlab.executor"] = str(executor_name)
+        tags["qlab.label_h"] = str(cfg["horizon"])
+        tags["qlab.seeds"] = ",".join(str(s) for s in cfg["seeds"])
+        tags["qlab.data_key"] = str(d["train_key"])
         tags["qlab.train"] = "true"
+        work = {"exp_id": exp, "executor": executor_name, "task": task,
+                "data_key": d["train_key"], "test_key": d["test_key"],
+                "cfg": cfg, "contract": rep, "executor_seconds": esec,
+                "tester": "pipeline.metrics", "data_version": DATA_VERSION,
+                "runner": str(spec.get("runner", "local"))}
+        (run_dir / "work.json").write_text(
+            json.dumps(work, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
         artifacts = {
-            "pred_matrix.pkl": str(run_dir / "pred_matrix.pkl"),
-            "label_matrix.pkl": str(run_dir / "label_matrix.pkl"),
-            "meta.json": str(run_dir / "meta.json"),
+            "pred_matrix.pkl": str(pred_path),
+            "label_matrix.pkl": str(label_path),
             "metrics.json": str(run_dir / "metrics.json"),
             "work.json": str(run_dir / "work.json"),
+            "executor_config.json": str(cfg_path),
+            "executor.log": str(run_dir / "executor.log"),
+            "contract_report.json": str(run_dir / "contract_report.json"),
         }
         run_id = registry.log_run(exp, params, metrics, tags, artifacts)
-        core = metricsmod.core_metrics(full, exp, run_id, DATA_VERSION, spec.get("expectation"))
-        (run_dir / "core_metrics.json").write_text(json.dumps(core, ensure_ascii=False, indent=2),
-                                                   encoding="utf-8")
-        params["conclusion"] = str(core["conclusion"]["text"])
-        params["expectation_check"] = str(core["conclusion"]["expectation_check"])
+        core = metricsmod.core_metrics(full, exp, run_id, DATA_VERSION,
+                                       spec.get("expectation"), task=task)
+        (run_dir / "core_metrics.json").write_text(
+            json.dumps(core, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
         print("QLAB_RESULT " + json.dumps({"run_id": run_id, "exp_name": exp, "spec_hash": h}))
         _write_runid_file(run_id)
         return run_id
@@ -251,6 +364,7 @@ def run(spec_path, job_id=None, batch_id=None):
     _write_runid_file(run_id)
     print("QLAB_RESULT " + json.dumps({"run_id": run_id, "exp_name": exp, "spec_hash": h}))
     return run_id
+
 
 def backfill(meta_dir, eval_dir):
     dirty = git_dirty_code()
@@ -288,6 +402,7 @@ def backfill(meta_dir, eval_dir):
     print(json.dumps(res))
     return res
 
+
 def main():
     ap = argparse.ArgumentParser(prog="pipeline.harness")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -303,6 +418,7 @@ def main():
         run(a.spec_path, a.job_id, a.batch_id)
     elif a.cmd == "backfill":
         backfill(a.meta_dir, a.eval_dir)
+
 
 if __name__ == "__main__":
     main()
