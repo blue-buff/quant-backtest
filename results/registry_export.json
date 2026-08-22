@@ -1,5 +1,113 @@
 [
  {
+  "experiment": "smoke_dirtycheck_003",
+  "experiment_id": "998523467799789660",
+  "runs": [
+   {
+    "run_id": "8bbf6df96f1f4516b2e9f7c93edc8484",
+    "status": "FINISHED",
+    "start_time": 1787370555342,
+    "params": {
+     "exp_id": "smoke_dirtycheck_003",
+     "action": "smoke",
+     "note": "wiring check only, not a research result"
+    },
+    "metrics": {
+     "smoke_check": 1.0
+    },
+    "tags": {
+     "mlflow.user": "root",
+     "mlflow.source.name": "/root/quant/pipeline/harness.py",
+     "mlflow.source.type": "LOCAL",
+     "mlflow.source.git.commit": "19b2d82db91b63c2b0deccb68b0ab349dafc8d14",
+     "mlflow.source.git.branch": "main",
+     "mlflow.source.git.repoURL": "https://github.com/blue-buff/quant-backtest.git",
+     "mlflow.runName": "smoke_dirtycheck_003_a15dc5",
+     "qlab.spec_hash": "a15dc5c6f97f2977",
+     "qlab.source": "harness",
+     "qlab.data_version": "v3",
+     "qlab.batch_id": "b-dirtycheck-b",
+     "qlab.git": "19b2d82d",
+     "qlab.run_name": "smoke_dirtycheck_003_a15dc5",
+     "qlab.exp_id": "smoke_dirtycheck_003",
+     "qlab.smoke": "true"
+    }
+   }
+  ]
+ },
+ {
+  "experiment": "smoke_dirtycheck_002",
+  "experiment_id": "998523467799789659",
+  "runs": [
+   {
+    "run_id": "2ece08847b1d4c1fbdad5f56d3bb4eaa",
+    "status": "FINISHED",
+    "start_time": 1787370501655,
+    "params": {
+     "exp_id": "smoke_dirtycheck_002",
+     "action": "smoke",
+     "note": "wiring check only, not a research result"
+    },
+    "metrics": {
+     "smoke_check": 1.0
+    },
+    "tags": {
+     "mlflow.user": "root",
+     "mlflow.source.name": "/root/quant/pipeline/harness.py",
+     "mlflow.source.type": "LOCAL",
+     "mlflow.source.git.commit": "19b2d82db91b63c2b0deccb68b0ab349dafc8d14",
+     "mlflow.source.git.branch": "main",
+     "mlflow.source.git.repoURL": "https://github.com/blue-buff/quant-backtest.git",
+     "mlflow.runName": "smoke_dirtycheck_002_3f51df",
+     "qlab.spec_hash": "3f51df5f5e282235",
+     "qlab.source": "harness",
+     "qlab.data_version": "v3",
+     "qlab.batch_id": "b-dirtycheck",
+     "qlab.git": "19b2d82d",
+     "qlab.run_name": "smoke_dirtycheck_002_3f51df",
+     "qlab.exp_id": "smoke_dirtycheck_002",
+     "qlab.smoke": "true"
+    }
+   }
+  ]
+ },
+ {
+  "experiment": "smoke_dirtycheck_001",
+  "experiment_id": "998523467799789658",
+  "runs": [
+   {
+    "run_id": "7cfacbf44fc04b18a84533ec617492e3",
+    "status": "FINISHED",
+    "start_time": 1787370497211,
+    "params": {
+     "exp_id": "smoke_dirtycheck_001",
+     "action": "smoke",
+     "note": "wiring check only, not a research result"
+    },
+    "metrics": {
+     "smoke_check": 1.0
+    },
+    "tags": {
+     "mlflow.user": "root",
+     "mlflow.source.name": "/root/quant/pipeline/harness.py",
+     "mlflow.source.type": "LOCAL",
+     "mlflow.source.git.commit": "19b2d82db91b63c2b0deccb68b0ab349dafc8d14",
+     "mlflow.source.git.branch": "main",
+     "mlflow.source.git.repoURL": "https://github.com/blue-buff/quant-backtest.git",
+     "mlflow.runName": "smoke_dirtycheck_001_506402",
+     "qlab.spec_hash": "506402859f24c809",
+     "qlab.source": "harness",
+     "qlab.data_version": "v3",
+     "qlab.batch_id": "b-dirtycheck",
+     "qlab.git": "19b2d82d",
+     "qlab.run_name": "smoke_dirtycheck_001_506402",
+     "qlab.exp_id": "smoke_dirtycheck_001",
+     "qlab.smoke": "true"
+    }
+   }
+  ]
+ },
+ {
   "experiment": "legacy_p1r_e072_off_1d_seed200_hs300",
   "experiment_id": "998523467799789657",
   "runs": [
