@@ -23,7 +23,7 @@ Flow (dispatch, called by queue._execute for runner="spark"):
 
 While QLAB_SPARK_SSH is blank, dispatch returns blocked=True (placeholder behavior).
 """
-import hashlib, json, os, subprocess, sys
+import hashlib, json, os, shutil, subprocess, sys
 from pathlib import Path
 
 from . import QLAB_ROOT
@@ -90,15 +90,6 @@ def _scp(cfg, src, dst):
     return subprocess.run(cmd, capture_output=True, text=True, timeout=600)
 
 
-def _rsync(cfg, src, dst):
-    ssh_remote = "ssh " + " ".join(_SSH_OPTS)
-    if cfg["jump"]:
-        ssh_remote += " -J " + cfg["jump"]
-    ssh_remote += " -p " + cfg["port"]
-    return subprocess.run(["rsync", "-a", "--delete", "-e", ssh_remote, src, dst],
-                          capture_output=True, text=True, timeout=600)
-
-
 def dispatch(row):
     """Run one job's compute phase on the DGX Spark container, then import the
     results into the local ledger. Returns {"ok": True, "run_id": ...} on
@@ -141,14 +132,29 @@ def dispatch(row):
             return {"ok": False, "blocked": False,
                     "reason": "remote compute failed rc=%s: %s" % (
                         r.returncode, (r.stdout + r.stderr)[-600:])}
-        local_run = QLAB_ROOT / "results" / "runs" / exp_id
-        local_run.parent.mkdir(parents=True, exist_ok=True)
-        r = _rsync(cfg,
-                   cfg["ssh"] + ":" + workdir + "/repo/results/runs/" + exp_id + "/",
-                   str(local_run) + "/")
+        # ---- pull results back: tar on remote + single-stream scp (no remote rsync) ----
+        tar_remote = workdir + "/results_%s.tar.gz" % exp_id
+        r = _ssh(cfg, "cd %s/repo/results/runs && tar czf %s %s"
+                      % (workdir, tar_remote, exp_id), 300)
         if r.returncode != 0:
             return {"ok": False, "blocked": False,
-                    "reason": "rsync back failed: %s" % r.stderr[-300:]}
+                    "reason": "remote tar results failed: %s" % r.stderr[-300:]}
+        local_tar = PACK_DIR / ("results_%s.tar.gz" % exp_id)
+        r = _scp(cfg, cfg["ssh"] + ":" + tar_remote, str(local_tar))
+        if r.returncode != 0:
+            return {"ok": False, "blocked": False,
+                    "reason": "scp results back failed: %s" % r.stderr[-300:]}
+        _ssh(cfg, "rm -f " + tar_remote, 60)
+        local_run = QLAB_ROOT / "results" / "runs" / exp_id
+        if local_run.exists():
+            shutil.rmtree(local_run)
+        local_run.parent.mkdir(parents=True, exist_ok=True)
+        r = subprocess.run(["tar", "xzf", str(local_tar), "-C", str(local_run.parent)],
+                           capture_output=True, text=True)
+        if r.returncode != 0:
+            return {"ok": False, "blocked": False,
+                    "reason": "local extract results failed: %s" % r.stderr[-300:]}
+        local_tar.unlink(missing_ok=True)
         imp = subprocess.run([sys.executable, "-m", "pipeline.harness", "import",
                               str(local_run), "--spec-hash", spec_hash,
                               "--job-id", str(row.get("job_id") or ""),
