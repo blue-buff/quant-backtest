@@ -1,0 +1,25 @@
+{
+ "exp_id": "p6_spark_hs300_10d",
+ "base": "ref:all10d_ens3",
+ "overrides": {
+  "universe": "hs300",
+  "seeds": [42],
+  "dataset": {
+   "handler": {
+    "instruments": "csi300"
+   }
+  }
+ },
+ "runner": "spark",
+ "action": {
+  "kind": "train",
+  "test_start": "2025-01-01",
+  "test_end": "2026-08-20"
+ },
+ "changes": "P6 真远程链冒烟：runner=spark → 队列 dispatch → DGX Spark 容器（ssh -J 跳板 -p 2223）compute-only → rsync 回传 → 本地 import 入库。同配置复现性检查（应与 p3_exec/p3c 同数字）",
+ "expectation": {
+  "rankic_mean_min": 0.0,
+  "p_le0_max": 0.5
+ },
+ "timeout_min": 45
+}

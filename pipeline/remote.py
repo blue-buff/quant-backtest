@@ -115,8 +115,8 @@ def dispatch(row):
     try:
         tarball, commit = pack()
         workdir = cfg["workdir"]
-        r = _ssh(cfg, "mkdir -p %s/packs %s/repo %s/qlib-data %s/repo/results"
-                      % (workdir, workdir, workdir, workdir), 60)
+        r = _ssh(cfg, "mkdir -p %s/packs %s/repo/cache %s/repo/results"
+                      % (workdir, workdir, workdir), 60)
         if r.returncode != 0:
             return {"ok": False, "blocked": False,
                     "reason": "remote mkdir failed: %s" % r.stderr[-300:]}
@@ -124,13 +124,14 @@ def dispatch(row):
         if r.returncode != 0:
             return {"ok": False, "blocked": False,
                     "reason": "scp pack failed: %s" % r.stderr[-300:]}
-        r = _ssh(cfg, "tar -xzf %s/packs/%s -C %s/repo"
-                      % (workdir, tarball.name, workdir), 300)
+        r = _ssh(cfg, "find %s/repo -mindepth 1 -maxdepth 1 ! -name cache -exec rm -rf {} + && tar -xzf %s/packs/%s -C %s/repo"
+                      % (workdir, workdir, tarball.name, workdir), 300)
         if r.returncode != 0:
             return {"ok": False, "blocked": False,
                     "reason": "remote extract failed: %s" % r.stderr[-300:]}
+        # QLAB_QLIB_DATA = parent of qlib_data/ (pipeline.data appends /qlib_data/...)
         env = ("QLAB_ROOT=%s/repo QLAB_EXPECTED_HASH=%s QLAB_EXPECTED_COMMIT=%s "
-               "QLAB_QLIB_DATA=%s/qlib-data OMP_NUM_THREADS=8 "
+               "QLAB_QLIB_DATA=%s OMP_NUM_THREADS=8 "
                "OPENBLAS_NUM_THREADS=8 MKL_NUM_THREADS=8"
                % (workdir, spec_hash, commit, workdir))
         run_cmd = ("cd %s/repo && timeout %d %s %s -m pipeline.harness run %s --compute-only"
