@@ -138,6 +138,11 @@ docker exec -i -w /root/quant hermes-1679f5b2 python -m pipeline.backup push --m
   · hang action 自然结束必失败（"hang action ended without timeout"是预期行为，专测超时路径）；
     测队列机制/并发用 sleep_ok action（延时 N 秒正常成功，入账标 smoke）；
   · 桥发现心跳可疑时先读容器时钟复核再 heal，Docker 睡眠唤醒的时钟漂移不会误杀。
+- 主机进程操作铁律：**禁止 taskkill //IM node.exe**——DSH 运行时和桥接都是 node 进程，
+  无差别击杀会杀掉自己的运行环境（已实锤发生一次）。重启桥接只用：
+  powershell -NoProfile -ExecutionPolicy Bypass -File D:/quant_backup/scripts/probe_node.ps1 -KillBridge
+  （先不带 -KillBridge 看进程清单，再精确杀桥接 PID），然后
+  cd /d/quant_backup && nohup node notify_bridge.js --interval 15 >> notify/bridge.log 2>&1 &。
 
 ## 8. 结论表述纪律
 

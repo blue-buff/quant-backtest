@@ -8,7 +8,8 @@ from . import (QLAB_ROOT, JOBS_DB, REGISTRY_EXPORT, BOARD_CSV, MLFLOW_DB,
 from . import board as boardmod
 
 GIT_PATHS = ["pipeline", "experiments", "knowledge", "docs", "AGENTS.md",
-             "notify_bridge.js", "scripts/mlflow_server.sh", ".gitignore",
+             "notify_bridge.js", "scripts/mlflow_server.sh", "scripts/probe_node.ps1",
+             ".gitignore",
              "scripts/eval_matrix.py", "scripts/remote_queue.py",
              "scripts/remote_run_allmarket.py", "scripts/train_weighted.py"]
 MAX_ARTIFACT_BYTES = 50 * 1024 * 1024
