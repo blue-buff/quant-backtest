@@ -7,11 +7,9 @@ from . import (QLAB_ROOT, JOBS_DB, REGISTRY_EXPORT, BOARD_CSV, MLFLOW_DB,
                ARTIFACT_DIR, registry)
 from . import board as boardmod
 
-GIT_PATHS = ["pipeline", "experiments", "knowledge", "docs", "AGENTS.md",
-             "notify_bridge.js", "scripts/mlflow_server.sh", "scripts/probe_node.ps1",
-             ".gitignore",
-             "scripts/eval_matrix.py", "scripts/remote_queue.py",
-             "scripts/remote_run_allmarket.py", "scripts/train_weighted.py"]
+GIT_PATHS = ["pipeline", "executors", "experiments", "knowledge", "docs",
+             "AGENTS.md", "notify_bridge.js", "scripts/mlflow_server.sh",
+             "scripts/probe_node.ps1", ".gitignore"]
 MAX_ARTIFACT_BYTES = 50 * 1024 * 1024
 
 def _sqlite_copy(src, dst):

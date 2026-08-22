@@ -173,6 +173,14 @@ def _flatten_metrics(full, task="regression"):
             if depth < 3:
                 for k2, v2 in obj.items():
                     walk(v2, path + str(k2) + ".", depth + 1)
+        elif isinstance(obj, list):
+            # lists of per-period dicts (quarters/monthly_ic) keep their period key
+            for item in obj:
+                if isinstance(item, dict):
+                    for kp in ("quarter", "month"):
+                        if kp in item:
+                            walk(item, path + str(item[kp]) + ".", depth + 1)
+                            break
         elif isinstance(obj, (int, float)) and not isinstance(obj, bool):
             try:
                 out[(path)[:-1]] = float(obj)

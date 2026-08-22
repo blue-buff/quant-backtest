@@ -172,16 +172,28 @@ def _execute(row):
     jid, spath = row["job_id"], row["spec_path"]
     try:
         if row["runner"] != "local":
+            reason = "remote runner not enabled (lab rules: remote machine untouched)"
+            if row["runner"] == "spark":
+                # P6 seam: DGX Spark docker dispatch. v1 placeholder in
+                # pipeline/remote.py returns blocked=True while QLAB_SPARK_SSH is blank.
+                try:
+                    from . import remote
+                    reason = remote.dispatch(dict(row)).get("reason", "spark dispatch failed")
+                except Exception as e:
+                    reason = "spark dispatch failed: %s" % e
             conn.execute("UPDATE jobs SET status='blocked', note=? WHERE job_id=?",
-                         ("remote runner not enabled (lab rules: remote machine untouched)", jid))
-            _event(conn, jid, row["batch_id"], row["exp_id"], "blocked",
-                   "remote runner not enabled")
+                         (reason, jid))
+            _event(conn, jid, row["batch_id"], row["exp_id"], "blocked", reason)
             conn.commit()
             return
         logfile = QUEUE_LOGS / ("job_%s.log" % jid)
         cmd = [sys.executable, "-m", "pipeline.harness", "run", str(QLAB_ROOT / spath),
                "--job-id", str(jid), "--batch-id", str(row["batch_id"])]
         env = os.environ.copy()
+        # cgroup pids.max=256: cap BLAS/OpenMP threads in the harness process
+        # (the executor child gets its own cap in pipeline.executor)
+        for k in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
+            env.setdefault(k, "4")
         env["QLAB_JOB_ID"] = str(jid)
         env["QLAB_BATCH_ID"] = str(row["batch_id"])
         env["QLAB_EXPECTED_HASH"] = str(row["spec_hash"])

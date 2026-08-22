@@ -3,8 +3,8 @@ import argparse, csv, json
 from . import BOARD_CSV, registry
 
 FIELDS = ["exp", "run_id", "status", "source", "pool", "seed", "batch",
-          "legacy", "smoke", "git", "rank_IC", "IC", "rankic_mean", "p_le0",
-          "start_time"]
+          "legacy", "smoke", "git", "executor", "handler", "task", "rank_IC",
+          "IC", "rankic_mean", "p_le0", "start_time"]
 
 def rows(formal=False):
     """formal=True: only FINISHED non-smoke research rows (no wiring checks, no failures)."""
@@ -27,6 +27,9 @@ def rows(formal=False):
                 "legacy": t.get("qlab.legacy", ""),
                 "smoke": t.get("qlab.smoke", ""),
                 "git": t.get("qlab.git", ""),
+                "executor": t.get("qlab.executor", ""),
+                "handler": t.get("qlab.handler", ""),
+                "task": t.get("qlab.task", ""),
                 "rank_IC": m.get("rank_IC"),
                 "IC": m.get("IC"),
                 "rankic_mean": m.get("rankic_mean"),

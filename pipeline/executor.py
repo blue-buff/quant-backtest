@@ -64,8 +64,12 @@ def run_executor(name, config_path, train_pq, test_pq, out_dir, timeout=None):
     cmd = [py, "main.py", "--config", str(config_path), "--train", str(train_pq),
            "--test", str(test_pq), "--out", str(out_dir)]
     t0 = time.time()
+    env = os.environ.copy()
+    cap = env.get("QLAB_EXECUTOR_THREADS", "8")
+    for k in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
+        env[k] = cap
     proc = subprocess.Popen(cmd, cwd=str(exdir), stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE, text=True)
+                            stderr=subprocess.PIPE, text=True, env=env)
     try:
         out, err = proc.communicate(timeout=timeout)
     except subprocess.TimeoutExpired:
@@ -97,7 +101,7 @@ def check_pred(pred_path, test_pq, min_inst=20, min_date_frac=0.5):
     except Exception as e:
         issues.append("score not numeric: %s" % e)
         return rep
-    test_df = pd.read_parquet(test_pq, columns=[])
+    test_df = pd.read_parquet(test_pq, columns=["y"])
     test_dates = set(test_df.index.get_level_values(0).unique())
     test_insts = set(test_df.index.get_level_values(1).unique())
     pred_dates = set(score.index.get_level_values(0).unique())

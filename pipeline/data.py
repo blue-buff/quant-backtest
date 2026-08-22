@@ -36,7 +36,8 @@ DEFAULTS = {
     "test_end": "2026-08-20",
     "rounds": 1000,
     "early_stopping": 50,
-    "num_threads": 20,
+    # container cgroup pids.max=256: keep the default thread budget small
+    "num_threads": 8,
 }
 
 DEFAULT_LEARN_PROCESSORS = [
@@ -90,16 +91,21 @@ def resolve(spec, eff):
 
 
 def _key(cfg, test=False):
-    canon = json.dumps({
+    canon = {
         "pool": cfg["pool"],
         "instruments": cfg["instruments"],
         "handler_class": cfg["handler_class"],
         "fit": [cfg["fit_start_time"], cfg["fit_end_time"]],
         "label": cfg["label_formula"],
         "learn_processors": cfg["learn_processors"],
-        "window_end": (cfg["test_end"] if test else cfg["valid"][1]),
-    }, sort_keys=True, ensure_ascii=False)
-    return hashlib.sha256(canon.encode()).hexdigest()[:16]
+    }
+    # train cache covers fit_start..valid[1]; test cache covers test_start..test_end
+    if test:
+        canon["window"] = [cfg["test_start"], cfg["test_end"]]
+    else:
+        canon["window"] = [cfg["fit_start_time"], cfg["valid"][1]]
+    return hashlib.sha256(json.dumps(canon, sort_keys=True, ensure_ascii=False)
+                          .encode()).hexdigest()[:16]
 
 
 def _fetch(cfg, start, end, cache_path):

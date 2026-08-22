@@ -385,3 +385,28 @@ metrics.json / pred.parquet——入口是工具，不是规则。读后写一�
 7. 已知口径偏差（记录在 run meta.note）：train action 走 learn-processor 特征路径（与
    scripts/train_allmarket.py 完全一致，保证与 legacy 数字可比）；ref 里的 infer_processors
    暂未应用，未来要做 infer 口径的实验需先对齐此差异。
+
+---
+
+## 14. P5 执行器契约（2026-08-22 上线，取代 §13 的 trainer.py 路线）
+
+用户定稿的设计：管线丝毫不管执行器内部，写执行器是 agent 的事。管线只管五样：
+spec、队列、取数、固定测试器、入库。
+
+- 数据固定菜单：pool（all/hs300/zz500）× handler（Alpha158/Alpha360）× 标签 × 窗口，
+  由 pipeline/data.py 建成 float32 parquet 缓存（切片式内存友好构建）；执行器只许读，
+  不许自造特征——board 上所有实验可比的根基。
+- 执行器契约（executors/README.md）：executors/<name>/main.py --config <json> --train <pq>
+  --test <pq> --out <dir>，输出 <out>/pred.pkl（(datetime, instrument) MultiIndex，列 score）；
+  requirements.txt 存在时自动建独立 venv。参考实现 executors/_example_lgb（原 trainer 移植）。
+- 链：取数 → 执行器 → 契约检查（QLAB_CONTRACT_FAIL）→ 固定测试器 pipeline.metrics
+  （唯一指标来源；regression=IC 族，classification=日度 AUC 族）→ 台账自动入库
+  （metrics 全部重算自 pred/label，执行器自报数字一律不采信）。
+- expectation 通用化：旧式 {rankic_mean_min, p_le0_max} 与通用 {"metric": 路径, "min"/"max"}
+  及列表形式并存。
+- 远程 runner="spark"（DGX Spark docker）：pipeline/remote.py v1 占位，QLAB_SPARK_SSH
+  留空；未配置时 blocked。P6 实现传输（rsync 仓库 → 远端 docker exec --compute-only →
+  回传 → 本地记账，保持 sqlite 单写者）。
+- 已知差距更新：§13.2 第 1/5 条部分解决（数据配置校验 QLAB_SPEC_INVALID；runner=spark
+  有占位语义）；trainer.py 已删除，逻辑迁至 executors/_example_lgb；遗留旧脚本已按用户
+  指示清理（train_allmarket/run_exps/eval_pred/gen_exps* 等 22 个）。

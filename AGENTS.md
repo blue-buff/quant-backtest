@@ -17,6 +17,9 @@ docker exec -i -w /root/quant hermes-1679f5b2 python -m pipeline.queue status
   往容器传文件用 docker cp，例如 docker cp "D:/quant_backup/pipeline" hermes-1679f5b2:/root/quant/。
 - 4090D 远程机（song@10.110.12.99）：默认不动。只有用户明确说"上远程"才可碰，
   且只碰 C:/Users/song/qbt_work，不碰系统、不用 GPU、不杀别的进程。
+- DGX Spark 远程机（GB10，128GB，目标 runner="spark"）：SSH 方式暂留空（pipeline/remote.py
+  读 QLAB_SPARK_SSH 环境变量），信息到位后实现 P6 传输层；在此之前 runner="spark" 的任务
+  会 blocked（占位行为，不是故障）。
 - GitHub 备份：blue-buff/quant-backtest（main）。push token 从主机拿：gh auth token。
 
 ## 2. 铁律（不可违背）
@@ -85,15 +88,27 @@ docker exec -i hermes-1679f5b2 sh -c 'cd /root/quant && python -m pipeline.regis
   · dispatcher 确认死亡 -> 自动 heal（杀孤儿进程组 + 台账 run 置 FAILED）+ 通知会话；
   · 收到【QLab 队列通知】消息时按本节三板斧排查，修复后重新 submit；
   · 会话 id 存在 D:\quant_backup\notify\session.txt，换新会话时要更新（否则通知找不到家）。
-- 真实训练走 train action（P0-4 已上线）：spec 写 {"action": {"kind": "train", ...}}，
-  base 用 "ref:xxx" 继承基线配置（dataset/label/model/seeds/ensemble），overrides 改单变量。
-  submit 后队列自动：建 Alpha158 特征（parquet 缓存，cache/ 目录，重跑直读）→ 每种子训
-  LightGBM（valid 早停）→ 样本外分块预测 → rank_mean 集成 → 全量指标（pipeline.metrics，
-  核心 5 项 rankic{mean,std,ir,p_value} + hit{rate,top_bottom_mean} + 结论对照 expectation）。
-  产物：results/runs/<exp_id>/{pred_matrix.pkl, label_matrix.pkl, meta.json, metrics.json,
-  core_metrics.json, work.json}，全部入台账 artifacts。
-  参考示例：experiments/specs/p2r_zz500_10d.json（单种子冒烟）与 p2r_all10d_ens3.json（基线复跑）。
-  写 expectation 字段（如 {"rankic_mean_min": 0.05, "p_le0_max": 0.05}）会自动对照给结论。
+- 真实训练走 train action（P5 执行器契约，2026-08 上线）：管线只管五样——spec、队列、
+  取数、固定测试器、入库。执行器内部是什么管线丝毫不管，写执行器是 agent 的事。
+  · spec 写 {"action": {"kind": "train", "executor": "executors/<name>", "task": ...}}，
+    base 用 "ref:xxx" 继承基线配置（dataset/label/model/seeds/ensemble），overrides 改单变量；
+    不写 executor 则默认 executors/_example_lgb。
+  · 数据固定菜单：pool（all/hs300/zz500）× handler（Alpha158/Alpha360）× 标签 × 窗口，
+    由 pipeline.data 建成 float32 parquet 缓存（cache/<key>.parquet，重跑直读）；
+    执行器只许读，不许自造特征（保证 board 可比）。
+  · 执行器契约见 executors/README.md：main.py --config <json> --train <pq> --test <pq>
+    --out <dir>，输出 <out>/pred.pkl（(datetime, instrument) MultiIndex，列 "score"）；
+    有 requirements.txt 自动建独立 venv（results/venvs/<name>）。
+  · 链：取数 → 执行器 → 契约检查（schema/覆盖度，不过则 QLAB_CONTRACT_FAIL）→
+    固定测试器 pipeline.metrics（唯一指标来源，回归=IC 族/分类=AUC 族）→ 台账自动入库
+    （metrics 全来自测试器，tags 记 qlab.executor/qlab.handler/qlab.task/qlab.data_key）。
+  · 产物：results/runs/<exp_id>/{pred.pkl, label_matrix.pkl, executor.log,
+    contract_report.json, metrics.json, core_metrics.json, work.json}，全部入台账 artifacts。
+  · expectation 通用化：{"rankic_mean_min": 0.05, "p_le0_max": 0.5}（旧格式）或
+    {"metric": "rankic_mean", "min": 0.05} / 列表形式，自动对照给结论。
+  · 远程 runner="spark" 为 v1 占位：pipeline/remote.py 读 QLAB_SPARK_SSH（当前留空），
+    未配置时任务 blocked；DGX Spark 传输层等机器信息到位后实现（P6）。
+  参考示例：experiments/specs/p3_exec_hs300_10d.json（执行器契约冒烟）。
 - backfill 仅用于历史实验入账；新实验一律走 train action，不要再用旧脚本。
 
 ## 4. 数据与版本
