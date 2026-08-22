@@ -3,7 +3,8 @@ import importlib, sys
 
 MODULES = {"queue": "pipeline.queue", "board": "pipeline.board", "backup": "pipeline.backup",
            "kb": "pipeline.kb", "review": "pipeline.review", "spec": "pipeline.spec",
-           "harness": "pipeline.harness"}
+           "harness": "pipeline.harness", "metrics": "pipeline.metrics",
+           "trainer": "pipeline.trainer"}
 
 def main():
     if len(sys.argv) < 2 or sys.argv[1] not in MODULES:

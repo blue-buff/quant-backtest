@@ -178,6 +178,58 @@ def run(spec_path, job_id=None, batch_id=None):
                                                "spec_hash": h, "reused": True}))
             return run_id
         run_id, exp, metrics = _log_eval(ev, tags, {"eval.json": str(ef)})
+    elif kind == "train":
+        from . import trainer, metrics as metricsmod
+        run_dir, full, meta = trainer.run_train(spec, eff)
+        exp = spec.get("exp_id")
+        params = {
+            "pool": str(meta["pool"]),
+            "seeds": json.dumps(meta["seeds"]),
+            "ensemble": str(meta["ensemble"]),
+            "label": str(meta["label"]),
+            "horizon": str(meta["horizon"]),
+            "model": json.dumps(meta["model"]),
+            "train_window": json.dumps(meta["train"]),
+            "valid_window": json.dumps(meta["valid"]),
+            "test_window": json.dumps(meta["test"]),
+            "total_seconds": str(meta["total_seconds"]),
+        }
+        lm = {
+            "rankic_mean": full["nonoverlap_mean_rank_ic"],
+            "rankic_std": full["rank_ic_std"],
+            "rankic_ir": full["nonoverlap_rank_icir"],
+            "ic": full["mean_ic"],
+            "icir": full["icir"],
+            "p_le0": full["bootstrap_rankic"]["p_le0"],
+            "hit_rate": full["hit_rate"],
+            "n_days": full["n_days"],
+            "n_nonoverlap": full["n_nonoverlap"],
+            "top_bottom": (full["deciles"] or {}).get("top_minus_bottom"),
+        }
+        metrics = {k: float(v) for k, v in lm.items() if v is not None}
+        for sr in meta["seed_runs"]:
+            if sr["valid_l2"] is not None:
+                metrics["valid_l2_seed%s" % sr["seed"]] = float(sr["valid_l2"])
+        tags["qlab.pool"] = str(meta["pool"])
+        tags["qlab.label_h"] = str(meta["horizon"])
+        tags["qlab.seeds"] = ",".join(str(s) for s in meta["seeds"])
+        tags["qlab.train"] = "true"
+        artifacts = {
+            "pred_matrix.pkl": str(run_dir / "pred_matrix.pkl"),
+            "label_matrix.pkl": str(run_dir / "label_matrix.pkl"),
+            "meta.json": str(run_dir / "meta.json"),
+            "metrics.json": str(run_dir / "metrics.json"),
+            "work.json": str(run_dir / "work.json"),
+        }
+        run_id = registry.log_run(exp, params, metrics, tags, artifacts)
+        core = metricsmod.core_metrics(full, exp, run_id, DATA_VERSION, spec.get("expectation"))
+        (run_dir / "core_metrics.json").write_text(json.dumps(core, ensure_ascii=False, indent=2),
+                                                   encoding="utf-8")
+        params["conclusion"] = str(core["conclusion"]["text"])
+        params["expectation_check"] = str(core["conclusion"]["expectation_check"])
+        print("QLAB_RESULT " + json.dumps({"run_id": run_id, "exp_name": exp, "spec_hash": h}))
+        _write_runid_file(run_id)
+        return run_id
     elif kind == "sleep_ok":
         import time as _time
         _time.sleep(float(action.get("seconds", 10)))
