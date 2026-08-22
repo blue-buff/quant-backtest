@@ -108,12 +108,26 @@ def _fetch_matrix(cfg, start_time, end_time, cache_name):
                  fit_end_time=cfg["fit_end_time"], learn_processors=LEARN_PROCESSORS,
                  label=[cfg["label_formula"]])
     data = h.fetch(col_set=["feature", "label"], data_key=DataHandlerLP.DK_L)
-    feat = data["feature"].astype(np.float32)
+    feat64 = data["feature"]
     lab = data["label"].iloc[:, 0]
-    df = feat.join(lab.rename("y"))
-    del feat, lab, data
-    df.to_parquet(cache_path)
-    return df
+    del data
+    # chunked float32 conversion + parquet write (all-market float64 matrix is ~5GB;
+    # naive astype + to_parquet would peak over the container memory limit)
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    writer = None
+    CHUNK = 400000
+    for s in range(0, len(feat64), CHUNK):
+        sub = feat64.iloc[s:s + CHUNK].astype(np.float32)
+        chunk = sub.join(lab.iloc[s:s + CHUNK].rename("y"))
+        table = pa.Table.from_pandas(chunk)
+        if writer is None:
+            writer = pq.ParquetWriter(cache_path, table.schema)
+        writer.write_table(table)
+        del sub, chunk, table
+    writer.close()
+    del feat64, lab
+    return pd.read_parquet(cache_path)
 
 
 def _split(df, cfg):
@@ -165,6 +179,7 @@ def run_train(spec, eff):
     key = _cfg_key(eff, cfg["pool"])
     df = _fetch_matrix(cfg, cfg["fit_start_time"], DEFAULTS["valid"][1], "train_" + key)
     X_tr, y_tr, X_va, y_va, feats = _split(df, cfg)
+    del df
     print("data ready %.0fs | train %s valid %s | %d features" %
           (time.time() - t0, X_tr.shape, X_va.shape, len(feats)), flush=True)
 
