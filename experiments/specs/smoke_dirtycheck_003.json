@@ -1,0 +1,9 @@
+{
+  "exp_id": "smoke_dirtycheck_003",
+  "base": {"note": "dirty gate test base"},
+  "overrides": {},
+  "changes": "未提交代码门禁烟雾测试 B：有未提交代码(_dirty_probe.py)应被拒绝入账",
+  "action": {"kind": "smoke"},
+  "runner": "local",
+  "timeout_min": 5
+}

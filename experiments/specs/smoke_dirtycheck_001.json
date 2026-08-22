@@ -1,0 +1,9 @@
+{
+  "exp_id": "smoke_dirtycheck_001",
+  "base": {"note": "dirty gate test base"},
+  "overrides": {},
+  "changes": "未提交代码门禁烟雾测试 A：干净仓库应正常入账",
+  "action": {"kind": "smoke"},
+  "runner": "local",
+  "timeout_min": 5
+}

@@ -1,0 +1,9 @@
+{
+  "batch_id": "b-dirtycheck",
+  "specs": ["experiments/specs/smoke_dirtycheck_001.json", "experiments/specs/smoke_dirtycheck_002.json"],
+  "concurrency": 1,
+  "runner_policy": "auto",
+  "timeout_min": 5,
+  "review": "auto",
+  "note": "未提交代码门禁测试批次"
+}

@@ -1,0 +1,9 @@
+{
+  "exp_id": "smoke_dirtycheck_002",
+  "base": {"note": "dirty gate test base"},
+  "overrides": {},
+  "changes": "未提交代码门禁烟雾测试 B：有未提交代码应被拒绝，清理后 retry 放行",
+  "action": {"kind": "smoke"},
+  "runner": "local",
+  "timeout_min": 5
+}
