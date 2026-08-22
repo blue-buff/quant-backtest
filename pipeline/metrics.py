@@ -16,13 +16,16 @@ from scipy import stats
 
 
 def load_wide(pred_path, label_path):
-    """Long pkl (score column / label column) -> wide date x instrument."""
+    """Long pkl (score column / label column) -> wide date x instrument.
+    Accepts Series or DataFrame for either file."""
     pred = pd.read_pickle(pred_path)
     lab = pd.read_pickle(label_path)
     if not isinstance(pred.index, pd.MultiIndex):
         raise ValueError("pred.pkl index must be (date, instrument)")
-    score = pred["score"].unstack("instrument")
-    label = lab.iloc[:, 0].unstack("instrument")
+    score = pred["score"] if hasattr(pred, "columns") else pred
+    label = lab.iloc[:, 0] if hasattr(lab, "columns") else lab
+    score = score.unstack("instrument")
+    label = label.unstack("instrument")
     label = label[~label.index.duplicated(keep="last")]
     common_idx = score.index.intersection(label.index)
     common_cols = score.columns.intersection(label.columns)
