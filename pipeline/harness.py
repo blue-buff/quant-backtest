@@ -201,6 +201,14 @@ def run(spec_path, job_id=None, batch_id=None):
     return run_id
 
 def backfill(meta_dir, eval_dir):
+    dirty = git_dirty_code()
+    if dirty:
+        shown = ",".join(dirty[:10])
+        if len(dirty) > 10:
+            shown += ",...(+%d more)" % (len(dirty) - 10)
+        print("QLAB_UNCOMMITTED_CODE " + shown, file=sys.stderr)
+        print("uncommitted code changes detected: commit them as a NEW commit id first (qlab.git must reference the code that produced the result)", file=sys.stderr)
+        sys.exit(3)
     c = registry.client()
     have = {e.name for e in c.search_experiments()}
     res = {"legacy_created": 0, "legacy_skipped": 0, "eval_created": 0, "eval_skipped": 0}
