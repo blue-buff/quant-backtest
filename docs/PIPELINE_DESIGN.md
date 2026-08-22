@@ -404,9 +404,11 @@ spec、队列、取数、固定测试器、入库。
   （metrics 全部重算自 pred/label，执行器自报数字一律不采信）。
 - expectation 通用化：旧式 {rankic_mean_min, p_le0_max} 与通用 {"metric": 路径, "min"/"max"}
   及列表形式并存。
-- 远程 runner="spark"（DGX Spark docker）：pipeline/remote.py v1 占位，QLAB_SPARK_SSH
-  留空；未配置时 blocked。P6 实现传输（rsync 仓库 → 远端 docker exec --compute-only →
-  回传 → 本地记账，保持 sqlite 单写者）。
+- 远程 runner="spark"（DGX Spark docker）：P6 v1 代码完成、QLAB_SPARK_SSH 留空待配。
+  pipeline/remote.py 流程 = git archive 打包 → scp → 远端 docker exec harness run
+  --compute-only（只算不记账）→ rsync 回传 results/runs/<exp_id> → 本地 harness import
+  记账（sqlite 单写者不变）；未配置时 blocked。本地彩排已跑通（p3c_rehearse_hs300_10d，
+  compute-only + import 两段与本地直通数字一致）。
 - 已知差距更新：§13.2 第 1/5 条部分解决（数据配置校验 QLAB_SPEC_INVALID；runner=spark
   有占位语义）；trainer.py 已删除，逻辑迁至 executors/_example_lgb；遗留旧脚本已按用户
   指示清理（train_allmarket/run_exps/eval_pred/gen_exps* 等 22 个）。

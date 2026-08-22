@@ -17,9 +17,12 @@ docker exec -i -w /root/quant hermes-1679f5b2 python -m pipeline.queue status
   往容器传文件用 docker cp，例如 docker cp "D:/quant_backup/pipeline" hermes-1679f5b2:/root/quant/。
 - 4090D 远程机（song@10.110.12.99）：默认不动。只有用户明确说"上远程"才可碰，
   且只碰 C:/Users/song/qbt_work，不碰系统、不用 GPU、不杀别的进程。
-- DGX Spark 远程机（GB10，128GB，目标 runner="spark"）：SSH 方式暂留空（pipeline/remote.py
-  读 QLAB_SPARK_SSH 环境变量），信息到位后实现 P6 传输层；在此之前 runner="spark" 的任务
-  会 blocked（占位行为，不是故障）。
+- DGX Spark 远程机（GB10，128GB，目标 runner="spark"）：传输层已代码完成（P6 v1），
+  SSH 留空待配。pipeline/remote.py 读 QLAB_SPARK_SSH（user@host）/ QLAB_SPARK_WORKDIR /
+  QLAB_SPARK_IMAGE 三个环境变量；流程 = git archive 打包 → scp → 远端 docker exec 跑
+  harness --compute-only（只算不记账）→ rsync 回传 results/runs/<exp_id> → 本地
+  harness import 记账（sqlite 单写者不变）。SSH 未配置时 runner="spark" 的任务会
+  blocked（占位行为，不是故障）；拿到机器信息后填 QLAB_SPARK_SSH 即启用。
 - GitHub 备份：blue-buff/quant-backtest（main）。push token 从主机拿：gh auth token。
 
 ## 2. 铁律（不可违背）

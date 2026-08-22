@@ -174,13 +174,21 @@ def _execute(row):
         if row["runner"] != "local":
             reason = "remote runner not enabled (lab rules: remote machine untouched)"
             if row["runner"] == "spark":
-                # P6 seam: DGX Spark docker dispatch. v1 placeholder in
-                # pipeline/remote.py returns blocked=True while QLAB_SPARK_SSH is blank.
+                # P6: DGX Spark docker dispatch (v1 code-complete in
+                # pipeline/remote.py; blocked while QLAB_SPARK_SSH is blank).
                 try:
                     from . import remote
-                    reason = remote.dispatch(dict(row)).get("reason", "spark dispatch failed")
+                    res = remote.dispatch(dict(row))
                 except Exception as e:
-                    reason = "spark dispatch failed: %s" % e
+                    res = {"ok": False, "blocked": False, "reason": "spark dispatch error: %s" % e}
+                if res.get("ok"):
+                    conn.execute("UPDATE jobs SET status='done', finished_at=?, mlflow_run_id=?, error=NULL"
+                                 " WHERE job_id=? AND status='running'",
+                                 (_now(), res.get("run_id"), jid))
+                    _event(conn, jid, row["batch_id"], row["exp_id"], "done")
+                    conn.commit()
+                    return
+                reason = res.get("reason", "spark dispatch failed")
             conn.execute("UPDATE jobs SET status='blocked', note=? WHERE job_id=?",
                          (reason, jid))
             _event(conn, jid, row["batch_id"], row["exp_id"], "blocked", reason)

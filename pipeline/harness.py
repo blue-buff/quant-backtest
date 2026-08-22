@@ -191,7 +191,112 @@ def _flatten_metrics(full, task="regression"):
     return out
 
 
-def run(spec_path, job_id=None, batch_id=None):
+def _run_executor_and_tester(spec, run_dir, cfg, executor_name, d):
+    """Shared compute phase (local queue path AND remote --compute-only path):
+    executor subprocess -> contract check -> fixed tester -> artifacts + work.json.
+    Returns (work, full, run_dir). Never touches the ledger."""
+    import pandas as pd
+    from . import executor as execmod, metrics as metricsmod
+    cfg_path = run_dir / "executor_config.json"
+    cfg_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2, default=str),
+                        encoding="utf-8")
+    rc, eout, eerr, esec = execmod.run_executor(executor_name, cfg_path,
+                                                d["train_pq"], d["test_pq"], run_dir)
+    (run_dir / "executor.log").write_text(
+        (eout or "") + "\n=== STDERR ===\n" + (eerr or ""), encoding="utf-8")
+    if rc != 0:
+        sys.stderr.write("executor %s failed rc=%s\n%s\n%s" % (
+            executor_name, rc, (eout or "")[-800:], (eerr or "")[-800:]))
+        sys.exit(4)
+    rep = execmod.check_pred(run_dir / "pred.pkl", d["test_pq"])
+    (run_dir / "contract_report.json").write_text(
+        json.dumps(rep, ensure_ascii=False, indent=2), encoding="utf-8")
+    if not rep["ok"]:
+        sys.stderr.write("QLAB_CONTRACT_FAIL %s\n" % json.dumps(rep, ensure_ascii=False))
+        sys.exit(5)
+    pred_path = run_dir / "pred.pkl"
+    label_path = run_dir / "label_matrix.pkl"
+    test_df = pd.read_parquet(d["test_pq"])
+    test_df["y"].to_pickle(label_path)
+    del test_df
+    task = cfg["task"]
+    if task == "classification":
+        full = metricsmod.compute_full_cls(pred_path, label_path)
+    else:
+        full = metricsmod.compute_full(pred_path, label_path, h=cfg["horizon"])
+    (run_dir / "metrics.json").write_text(
+        json.dumps(full, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+    work = {"exp_id": str(spec.get("exp_id")), "executor": executor_name, "task": task,
+            "data_key": d["train_key"], "test_key": d["test_key"],
+            "cfg": cfg, "contract": rep, "executor_seconds": esec,
+            "tester": "pipeline.metrics", "data_version": DATA_VERSION,
+            "runner": str(spec.get("runner", "local")),
+            "expectation": spec.get("expectation"),
+            "git_commit": git_commit() or os.environ.get("QLAB_EXPECTED_COMMIT", "")}
+    (run_dir / "work.json").write_text(
+        json.dumps(work, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+    return work, full, run_dir
+
+
+def _import_run(work, full, run_dir, spec_hash, batch_id=None, job_id=None):
+    """Ledger import from compute artifacts (local queue path OR after remote
+    rsync-back). Metrics come ONLY from the fixed tester (metrics.json)."""
+    from . import metrics as metricsmod
+    cfg = work["cfg"]
+    task = work["task"]
+    executor_name = work["executor"]
+    exp = str(work["exp_id"])
+    rep = work["contract"]
+    tags = registry.std_tags(spec_hash, batch_id=batch_id, source="harness")
+    tags["qlab.git"] = str(work.get("git_commit") or git_commit())
+    tags["qlab.data_version"] = DATA_VERSION
+    tags["qlab.run_name"] = exp + "_" + (spec_hash or "")[:6]
+    tags["qlab.exp_id"] = exp
+    tags["qlab.pool"] = str(cfg["pool"])
+    tags["qlab.handler"] = str(cfg["handler_class"])
+    tags["qlab.task"] = str(task)
+    tags["qlab.executor"] = str(executor_name)
+    tags["qlab.label_h"] = str(cfg["horizon"])
+    tags["qlab.seeds"] = ",".join(str(s) for s in cfg.get("seeds", []))
+    tags["qlab.data_key"] = str(work["data_key"])
+    tags["qlab.train"] = "true"
+    params = {
+        "pool": str(cfg["pool"]),
+        "handler": str(cfg["handler_class"]),
+        "task": str(task),
+        "executor": str(executor_name),
+        "label": str(cfg["label_formula"]),
+        "horizon": str(cfg["horizon"]),
+        "seeds": json.dumps(cfg.get("seeds", [])),
+        "model": json.dumps(cfg.get("model", {})),
+        "train_window": json.dumps(cfg.get("train", [])),
+        "valid_window": json.dumps(cfg.get("valid", [])),
+        "test_window": json.dumps([cfg.get("test_start"), cfg.get("test_end")]),
+        "data_key": str(work["data_key"]),
+        "executor_seconds": str(work.get("executor_seconds", "")),
+        "coverage": json.dumps({k: rep.get(k) for k in
+                                ("n_dates", "date_frac", "n_inst", "inst_frac", "nan_frac")}),
+    }
+    metrics = _flatten_metrics(full, task=task)
+    artifacts = {
+        "pred_matrix.pkl": str(run_dir / "pred.pkl"),
+        "label_matrix.pkl": str(run_dir / "label_matrix.pkl"),
+        "metrics.json": str(run_dir / "metrics.json"),
+        "work.json": str(run_dir / "work.json"),
+        "executor_config.json": str(run_dir / "executor_config.json"),
+        "executor.log": str(run_dir / "executor.log"),
+        "contract_report.json": str(run_dir / "contract_report.json"),
+    }
+    run_id = registry.log_run(exp, params, metrics, tags, artifacts)
+    core = metricsmod.core_metrics(full, exp, run_id, DATA_VERSION,
+                                   work.get("expectation"), task=task)
+    (run_dir / "core_metrics.json").write_text(
+        json.dumps(core, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+    _write_runid_file(run_id)
+    return run_id
+
+
+def run(spec_path, job_id=None, batch_id=None, compute_only=False):
     spec = specmod.load_spec(spec_path)
     eff = specmod.resolve(spec)
     h = specmod.spec_hash(eff)
@@ -247,15 +352,14 @@ def run(spec_path, job_id=None, batch_id=None):
             return run_id
         run_id, exp, metrics = _log_eval(ev, tags, {"eval.json": str(ef)})
     elif kind == "train":
-        from . import data as datamod, executor as execmod, metrics as metricsmod
-        import pandas as pd
+        from . import data as datamod, executor as execmod
         exp = str(spec.get("exp_id"))
         run_dir = RUNS_DIR / exp
         if run_dir.exists():
             shutil.rmtree(run_dir)
         run_dir.mkdir(parents=True, exist_ok=True)
         act = spec.get("action") or {}
-        # ---- 1. data ensure (fixed menu, pipeline-owned) ----
+        # ---- data ensure (fixed menu, pipeline-owned) ----
         d = datamod.ensure(spec, eff)
         cfg = dict(d["cfg"])
         cfg.update({
@@ -268,88 +372,18 @@ def run(spec_path, job_id=None, batch_id=None):
             "save_models": bool(act.get("save_models", False)),
         })
         executor_name = str(act.get("executor") or execmod.DEFAULT_EXECUTOR)
-        cfg_path = run_dir / "executor_config.json"
-        cfg_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2, default=str),
-                            encoding="utf-8")
-        # ---- 2. executor (agent territory, subprocess) ----
-        rc, eout, eerr, esec = execmod.run_executor(
-            executor_name, cfg_path, d["train_pq"], d["test_pq"], run_dir)
-        (run_dir / "executor.log").write_text(
-            (eout or "") + "\n=== STDERR ===\n" + (eerr or ""), encoding="utf-8")
-        if rc != 0:
-            sys.stderr.write("executor %s failed rc=%s\n%s\n%s" % (
-                executor_name, rc, (eout or "")[-800:], (eerr or "")[-800:]))
-            sys.exit(4)
-        # ---- 3. contract check ----
-        rep = execmod.check_pred(run_dir / "pred.pkl", d["test_pq"])
-        (run_dir / "contract_report.json").write_text(
-            json.dumps(rep, ensure_ascii=False, indent=2), encoding="utf-8")
-        if not rep["ok"]:
-            sys.stderr.write("QLAB_CONTRACT_FAIL %s\n" % json.dumps(rep, ensure_ascii=False))
-            sys.exit(5)
-        # ---- 4. fixed tester: the ONLY metric source ----
-        pred_path = run_dir / "pred.pkl"
-        label_path = run_dir / "label_matrix.pkl"
-        test_df = pd.read_parquet(d["test_pq"])
-        test_df["y"].to_pickle(label_path)
-        del test_df
-        task = cfg["task"]
-        if task == "classification":
-            full = metricsmod.compute_full_cls(pred_path, label_path)
-        else:
-            full = metricsmod.compute_full(pred_path, label_path, h=cfg["horizon"])
-        (run_dir / "metrics.json").write_text(
-            json.dumps(full, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
-        # ---- 5. ledger import (metrics come ONLY from the tester) ----
-        params = {
-            "pool": str(cfg["pool"]),
-            "handler": str(cfg["handler_class"]),
-            "task": str(task),
-            "executor": str(executor_name),
-            "label": str(cfg["label_formula"]),
-            "horizon": str(cfg["horizon"]),
-            "seeds": json.dumps(cfg["seeds"]),
-            "model": json.dumps(cfg["model"]),
-            "train_window": json.dumps(cfg["train"]),
-            "valid_window": json.dumps(cfg["valid"]),
-            "test_window": json.dumps([cfg["test_start"], cfg["test_end"]]),
-            "data_key": str(d["train_key"]),
-            "executor_seconds": str(esec),
-            "coverage": json.dumps({k: rep[k] for k in
-                                    ("n_dates", "date_frac", "n_inst", "inst_frac", "nan_frac")}),
-        }
-        metrics = _flatten_metrics(full, task=task)
-        tags["qlab.pool"] = str(cfg["pool"])
-        tags["qlab.handler"] = str(cfg["handler_class"])
-        tags["qlab.task"] = str(task)
-        tags["qlab.executor"] = str(executor_name)
-        tags["qlab.label_h"] = str(cfg["horizon"])
-        tags["qlab.seeds"] = ",".join(str(s) for s in cfg["seeds"])
-        tags["qlab.data_key"] = str(d["train_key"])
-        tags["qlab.train"] = "true"
-        work = {"exp_id": exp, "executor": executor_name, "task": task,
-                "data_key": d["train_key"], "test_key": d["test_key"],
-                "cfg": cfg, "contract": rep, "executor_seconds": esec,
-                "tester": "pipeline.metrics", "data_version": DATA_VERSION,
-                "runner": str(spec.get("runner", "local"))}
-        (run_dir / "work.json").write_text(
-            json.dumps(work, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
-        artifacts = {
-            "pred_matrix.pkl": str(pred_path),
-            "label_matrix.pkl": str(label_path),
-            "metrics.json": str(run_dir / "metrics.json"),
-            "work.json": str(run_dir / "work.json"),
-            "executor_config.json": str(cfg_path),
-            "executor.log": str(run_dir / "executor.log"),
-            "contract_report.json": str(run_dir / "contract_report.json"),
-        }
-        run_id = registry.log_run(exp, params, metrics, tags, artifacts)
-        core = metricsmod.core_metrics(full, exp, run_id, DATA_VERSION,
-                                       spec.get("expectation"), task=task)
-        (run_dir / "core_metrics.json").write_text(
-            json.dumps(core, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+        # ---- executor -> contract check -> fixed tester (shared with remote) ----
+        work, full, run_dir = _run_executor_and_tester(spec, run_dir, cfg,
+                                                        executor_name, d)
+        if compute_only:
+            # remote path: artifacts stay for rsync-back; ledger import happens later
+            print("QLAB_COMPUTE_OK " + json.dumps(
+                {"exp_id": exp, "run_dir": str(run_dir), "spec_hash": h,
+                 "git": work["git_commit"]}))
+            return None
+        # ---- local path: ledger import right away ----
+        run_id = _import_run(work, full, run_dir, h, batch_id, job_id)
         print("QLAB_RESULT " + json.dumps({"run_id": run_id, "exp_name": exp, "spec_hash": h}))
-        _write_runid_file(run_id)
         return run_id
     elif kind == "sleep_ok":
         import time as _time
@@ -371,6 +405,26 @@ def run(spec_path, job_id=None, batch_id=None):
         raise ValueError("unknown action kind: " + repr(kind))
     _write_runid_file(run_id)
     print("QLAB_RESULT " + json.dumps({"run_id": run_id, "exp_name": exp, "spec_hash": h}))
+    return run_id
+
+
+def import_run(run_dir, spec_hash="", batch_id=None, job_id=None):
+    """Import a compute-only run dir into the ledger (remote path: after
+    rsync-back). Reuses the exact same import as the local queue path."""
+    dirty = git_dirty_code()
+    if dirty:
+        shown = ",".join(dirty[:10])
+        if len(dirty) > 10:
+            shown += ",...(+%d more)" % (len(dirty) - 10)
+        print("QLAB_UNCOMMITTED_CODE " + shown, file=sys.stderr)
+        print("uncommitted code changes detected: commit them as a NEW commit id first (qlab.git must reference the code that produced the result)", file=sys.stderr)
+        sys.exit(3)
+    run_dir = Path(run_dir)
+    work = json.loads((run_dir / "work.json").read_text())
+    full = json.loads((run_dir / "metrics.json").read_text())
+    run_id = _import_run(work, full, run_dir, spec_hash, batch_id, job_id)
+    print("QLAB_RESULT " + json.dumps({"run_id": run_id, "exp_name": work["exp_id"],
+                                       "spec_hash": spec_hash}))
     return run_id
 
 
@@ -418,12 +472,21 @@ def main():
     p1.add_argument("spec_path")
     p1.add_argument("--job-id")
     p1.add_argument("--batch-id")
+    p1.add_argument("--compute-only", action="store_true",
+                    help="compute only (no ledger): remote protocol path")
     p2 = sub.add_parser("backfill")
     p2.add_argument("--meta-dir", default="docs/evidence/exps")
     p2.add_argument("--eval-dir", default="results/eval")
+    p3 = sub.add_parser("import")
+    p3.add_argument("run_dir")
+    p3.add_argument("--spec-hash", default="")
+    p3.add_argument("--job-id")
+    p3.add_argument("--batch-id")
     a = ap.parse_args()
     if a.cmd == "run":
-        run(a.spec_path, a.job_id, a.batch_id)
+        run(a.spec_path, a.job_id, a.batch_id, a.compute_only)
+    elif a.cmd == "import":
+        import_run(a.run_dir, a.spec_hash, a.job_id, a.batch_id)
     elif a.cmd == "backfill":
         backfill(a.meta_dir, a.eval_dir)
 
