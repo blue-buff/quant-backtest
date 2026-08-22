@@ -1,5 +1,65 @@
 [
  {
+  "experiment": "legacy_p1r_e072_off_1d_seed200_hs300",
+  "experiment_id": "998523467799789657",
+  "runs": [
+   {
+    "run_id": "c010721b801e455a892720f8e796cdc7",
+    "status": "FINISHED",
+    "start_time": 1787369437927,
+    "params": {
+     "label": "default(1d)",
+     "pool": "hs300",
+     "yaml": "qlib_examples/experiments/e072_off_1d_seed200_hs300.yaml",
+     "window": "",
+     "segments": "{\"train\": [\"2022-01-01\", \"2024-06-30\"], \"valid\": [\"2024-07-01\", \"2024-12-31\"], \"test\": [\"2025-01-01\", \"2026-08-14\"]}",
+     "git": "e4f93d6",
+     "seconds": "185.8",
+     "source_file": "/root/quant/docs/evidence/exps/p1r_e072_off_1d_seed200_hs300.json",
+     "model.loss": "mse",
+     "model.colsample_bytree": "0.8879",
+     "model.learning_rate": "0.2",
+     "model.subsample": "0.8789",
+     "model.lambda_l1": "205.6999",
+     "model.lambda_l2": "580.9768",
+     "model.max_depth": "8",
+     "model.num_leaves": "210",
+     "model.num_threads": "20",
+     "model.seed": "200",
+     "model.bagging_seed": "201",
+     "model.feature_fraction_seed": "202"
+    },
+    "metrics": {
+     "IC": 0.007116150297551805,
+     "ICIR": 0.051399335639222325,
+     "rank_IC": 0.020963611764025936,
+     "rank_ICIR": 0.13202381355873974,
+     "train_l2": 0.9675799967410484,
+     "valid_l2": 1.0007196917696464
+    },
+    "tags": {
+     "mlflow.user": "root",
+     "mlflow.source.name": "/root/quant/pipeline/harness.py",
+     "mlflow.source.type": "LOCAL",
+     "mlflow.source.git.commit": "e4f93d6364127f98feae504d0cdeab5bf13fa2d5",
+     "mlflow.source.git.branch": "main",
+     "mlflow.source.git.repoURL": "https://github.com/blue-buff/quant-backtest.git",
+     "mlflow.runName": "p1r_e072_off_1d_seed200_hs300_f4fc9a",
+     "qlab.spec_hash": "f4fc9a0ae9af92d7",
+     "qlab.source": "legacy_backfill",
+     "qlab.data_version": "v3",
+     "qlab.batch_id": "b-pipeline-first",
+     "qlab.git": "e4f93d63",
+     "qlab.run_name": "p1r_e072_off_1d_seed200_hs300_f4fc9a",
+     "qlab.exp_id": "p1r_e072_off_1d_seed200_hs300",
+     "qlab.legacy": "true",
+     "qlab.pool": "hs300",
+     "qlab.yaml": "qlib_examples/experiments/e072_off_1d_seed200_hs300.yaml"
+    }
+   }
+  ]
+ },
+ {
   "experiment": "registry_guard_test",
   "experiment_id": "998523467799789656",
   "runs": [
