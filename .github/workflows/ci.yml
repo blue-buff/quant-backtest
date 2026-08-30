@@ -1,0 +1,27 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps
+        run: |
+          pip install pandas numpy pyyaml typer rich pytest scipy pyarrow mlflow
+          pip install -e .
+      - name: Syntax check
+        run: python -m py_compile qbt/*.py qbt/commands/*.py qlib_examples/*.py qlib_scripts/*.py config.py pipeline/*.py
+      - name: Pipeline unit tests (P7/P8：纯函数，零网络/零行情依赖)
+        run: python -m pytest tests/test_spec.py tests/test_data_cache.py tests/test_extra_features.py tests/test_contract.py tests/test_notify.py tests/test_board_multiplicity.py tests/test_kb.py tests/test_review.py tests/test_portfolio.py tests/test_backtest.py tests/test_prices.py tests/test_route.py tests/test_harness.py tests/test_import_cli.py -q
+      - name: Legacy unit tests (纯函数，零网络/零行情依赖)
+        run: python -m pytest tests/ -q --ignore=tests/test_spec.py --ignore=tests/test_data_cache.py --ignore=tests/test_extra_features.py --ignore=tests/test_contract.py --ignore=tests/test_notify.py --ignore=tests/test_board_multiplicity.py --ignore=tests/test_kb.py --ignore=tests/test_review.py --ignore=tests/test_portfolio.py --ignore=tests/test_backtest.py --ignore=tests/test_prices.py --ignore=tests/test_route.py --ignore=tests/test_harness.py --ignore=tests/test_import_cli.py
+      # 说明: 合成数据冒烟（10只假股票 CSV→dump→Linear 训练）需要 qlib 环境，
+      # 放在 scripts/smoke_synthetic.py，本地跑: python scripts/smoke_synthetic.py

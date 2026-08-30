@@ -1,0 +1,17 @@
+# Kronos executor dependencies (venv auto-built by pipeline.executor).
+# torch: CPU wheels for the local container; CUDA cu128 wheels for the DGX
+# Spark (aarch64, no PyPI CUDA wheels). pip resolves the highest version
+# matching torch>=2.0 across the indexes below, so each box gets the right
+# build. Local venv was built with torch 2.5.1+cpu and re-stamped (satisfies
+# torch>=2.0; no rebuild needed).
+--extra-index-url https://download.pytorch.org/whl/cpu
+--extra-index-url https://mirrors.aliyun.com/pytorch-wheels/cu128/
+torch>=2.0
+numpy
+pandas
+pyarrow
+einops==0.8.1
+huggingface_hub==0.33.1
+safetensors==0.6.2
+tqdm==4.67.1
+

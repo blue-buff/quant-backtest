@@ -1,0 +1,2049 @@
+{
+ "generated_at": "2026-08-29 08:45:02",
+ "pool": "all",
+ "data_dir": "qlib_data_src_all",
+ "cutoff": "2021-06-01",
+ "source": "baostock",
+ "source_deviation": "eastmoney stock_zh_a_hist WAF-blocked (push2his TLS reset, host+container, 2026-08-29); user approved baostock. Step 0 calibration vs sina on sh600000: volume/amount/raw exact, turn within 4-dp rounding (percent), hfq/factor differ by per-stock constant (hfq base).",
+ "caveats": [
+  "hfq 后复权基准与 sina 不同（差每只股票常数倍）；退市股与现存股无同日重叠，对收益率/截面特征影响有限",
+  "turn 为 baostock 百分数口径，与 sina turnover*100 在 4 位小数内一致",
+  "B 股（200xxx/900xxx）不在 all 池 universe，记 no_data 不入池",
+  "北交所退市不在本计划范围（akshare 1.18.91 无 bj 退市接口）",
+  "暂停上市期间无成交行已按 sina 口径剔除（仅保留有成交交易日）"
+ ],
+ "stocks": [
+  {
+   "sym": "sh600485",
+   "name": "*ST信威",
+   "delist_date": "2021-06-01",
+   "source": "baostock",
+   "status": "no_data",
+   "reason": "窗口内无成交（长期停牌至退市）"
+  },
+  {
+   "sym": "sz002711",
+   "name": "欧浦退",
+   "delist_date": "2021-07-15",
+   "source": "baostock",
+   "status": "added",
+   "rows": 30,
+   "start": "2021-06-02",
+   "end": "2021-07-14"
+  },
+  {
+   "sym": "sz200986",
+   "name": "粤华包Ｂ",
+   "delist_date": "2021-07-21",
+   "source": "baostock",
+   "status": "no_data",
+   "reason": "B股不在 all 池 universe（池内无 B 股代码），且 baostock 无覆盖"
+  },
+  {
+   "sym": "sh600614",
+   "name": "退市鹏起",
+   "delist_date": "2021-07-22",
+   "source": "baostock",
+   "status": "added",
+   "rows": 30,
+   "start": "2021-06-02",
+   "end": "2021-07-14"
+  },
+  {
+   "sym": "sh600634",
+   "name": "退市富控",
+   "delist_date": "2021-07-22",
+   "source": "baostock",
+   "status": "added",
+   "rows": 30,
+   "start": "2021-06-02",
+   "end": "2021-07-14"
+  },
+  {
+   "sym": "sz000760",
+   "name": "斯太退",
+   "delist_date": "2021-07-23",
+   "source": "baostock",
+   "status": "added",
+   "rows": 30,
+   "start": "2021-06-10",
+   "end": "2021-07-22"
+  },
+  {
+   "sym": "sz002359",
+   "name": "北讯退",
+   "delist_date": "2021-07-23",
+   "source": "baostock",
+   "status": "added",
+   "rows": 30,
+   "start": "2021-06-10",
+   "end": "2021-07-22"
+  },
+  {
+   "sym": "sz300362",
+   "name": "天翔退",
+   "delist_date": "2021-08-30",
+   "source": "baostock",
+   "status": "added",
+   "rows": 30,
+   "start": "2021-07-19",
+   "end": "2021-08-27"
+  },
+  {
+   "sym": "sh600068",
+   "name": "葛洲坝",
+   "delist_date": "2021-09-13",
+   "source": "baostock",
+   "status": "added",
+   "rows": 65,
+   "start": "2021-06-01",
+   "end": "2021-09-01"
+  },
+  {
+   "sym": "sh600723",
+   "name": "首商股份",
+   "delist_date": "2021-10-22",
+   "source": "baostock",
+   "status": "added",
+   "rows": 75,
+   "start": "2021-06-01",
+   "end": "2021-09-15"
+  },
+  {
+   "sym": "sz000780",
+   "name": "ST平能",
+   "delist_date": "2022-01-24",
+   "source": "baostock",
+   "status": "added",
+   "rows": 133,
+   "start": "2021-06-01",
+   "end": "2021-12-16"
+  },
+  {
+   "sym": "sh600145",
+   "name": "退市新亿",
+   "delist_date": "2022-04-28",
+   "source": "baostock",
+   "status": "added",
+   "rows": 198,
+   "start": "2021-06-01",
+   "end": "2022-04-21"
+  },
+  {
+   "sym": "sz002619",
+   "name": "*ST艾格",
+   "delist_date": "2022-04-28",
+   "source": "baostock",
+   "status": "added",
+   "rows": 204,
+   "start": "2021-06-01",
+   "end": "2022-03-31"
+  },
+  {
+   "sym": "sz000835",
+   "name": "长动退",
+   "delist_date": "2022-05-23",
+   "source": "baostock",
+   "status": "added",
+   "rows": 214,
+   "start": "2021-06-01",
+   "end": "2022-05-20"
+  },
+  {
+   "sym": "sh603157",
+   "name": "退市拉夏",
+   "delist_date": "2022-05-24",
+   "source": "baostock",
+   "status": "added",
+   "rows": 218,
+   "start": "2021-06-01",
+   "end": "2022-05-17"
+  },
+  {
+   "sym": "sh603996",
+   "name": "退市中新",
+   "delist_date": "2022-05-24",
+   "source": "baostock",
+   "status": "added",
+   "rows": 218,
+   "start": "2021-06-01",
+   "end": "2022-05-17"
+  },
+  {
+   "sym": "sz000585",
+   "name": "东电退",
+   "delist_date": "2022-05-24",
+   "source": "baostock",
+   "status": "added",
+   "rows": 218,
+   "start": "2021-06-01",
+   "end": "2022-05-23"
+  },
+  {
+   "sym": "sh600291",
+   "name": "退市西水",
+   "delist_date": "2022-06-14",
+   "source": "baostock",
+   "status": "added",
+   "rows": 238,
+   "start": "2021-06-01",
+   "end": "2022-06-07"
+  },
+  {
+   "sym": "sh600695",
+   "name": "退市绿庭",
+   "delist_date": "2022-06-15",
+   "source": "baostock",
+   "status": "added",
+   "rows": 234,
+   "start": "2021-06-01",
+   "end": "2022-06-07"
+  },
+  {
+   "sym": "sz000687",
+   "name": "华讯退",
+   "delist_date": "2022-06-17",
+   "source": "baostock",
+   "status": "added",
+   "rows": 236,
+   "start": "2021-06-01",
+   "end": "2022-06-16"
+  },
+  {
+   "sym": "sz002260",
+   "name": "德奥退",
+   "delist_date": "2022-06-17",
+   "source": "baostock",
+   "status": "added",
+   "rows": 30,
+   "start": "2022-05-05",
+   "end": "2022-06-16"
+  },
+  {
+   "sym": "sh600091",
+   "name": "退市明科",
+   "delist_date": "2022-06-21",
+   "source": "baostock",
+   "status": "added",
+   "rows": 236,
+   "start": "2021-06-01",
+   "end": "2022-06-15"
+  },
+  {
+   "sym": "sh600652",
+   "name": "退市游久",
+   "delist_date": "2022-06-21",
+   "source": "baostock",
+   "status": "added",
+   "rows": 238,
+   "start": "2021-06-01",
+   "end": "2022-06-15"
+  },
+  {
+   "sym": "sh600890",
+   "name": "退市中房",
+   "delist_date": "2022-06-21",
+   "source": "baostock",
+   "status": "added",
+   "rows": 237,
+   "start": "2021-06-01",
+   "end": "2022-06-15"
+  },
+  {
+   "sym": "sh600209",
+   "name": "退市罗顿",
+   "delist_date": "2022-06-22",
+   "source": "baostock",
+   "status": "added",
+   "rows": 237,
+   "start": "2021-06-01",
+   "end": "2022-06-15"
+  },
+  {
+   "sym": "sh600275",
+   "name": "退市昌鱼",
+   "delist_date": "2022-06-22",
+   "source": "baostock",
+   "status": "added",
+   "rows": 238,
+   "start": "2021-06-01",
+   "end": "2022-06-15"
+  },
+  {
+   "sym": "sh600856",
+   "name": "退市中天",
+   "delist_date": "2022-06-22",
+   "source": "baostock",
+   "status": "added",
+   "rows": 224,
+   "start": "2021-06-01",
+   "end": "2022-06-15"
+  },
+  {
+   "sym": "sz002473",
+   "name": "圣莱退",
+   "delist_date": "2022-06-22",
+   "source": "baostock",
+   "status": "added",
+   "rows": 238,
+   "start": "2021-06-01",
+   "end": "2022-06-21"
+  },
+  {
+   "sym": "sz002618",
+   "name": "丹邦退",
+   "delist_date": "2022-06-22",
+   "source": "baostock",
+   "status": "added",
+   "rows": 238,
+   "start": "2021-06-01",
+   "end": "2022-06-21"
+  },
+  {
+   "sym": "sz300178",
+   "name": "腾邦退",
+   "delist_date": "2022-06-22",
+   "source": "baostock",
+   "status": "added",
+   "rows": 235,
+   "start": "2021-06-01",
+   "end": "2022-06-21"
+  },
+  {
+   "sym": "sh600093",
+   "name": "退市易见",
+   "delist_date": "2022-06-23",
+   "source": "baostock",
+   "status": "added",
+   "rows": 210,
+   "start": "2021-07-07",
+   "end": "2022-06-16"
+  },
+  {
+   "sym": "sz002147",
+   "name": "新光退",
+   "delist_date": "2022-06-23",
+   "source": "baostock",
+   "status": "added",
+   "rows": 238,
+   "start": "2021-06-01",
+   "end": "2022-06-22"
+  },
+  {
+   "sym": "sz002770",
+   "name": "科迪退",
+   "delist_date": "2022-06-23",
+   "source": "baostock",
+   "status": "added",
+   "rows": 238,
+   "start": "2021-06-01",
+   "end": "2022-06-22"
+  },
+  {
+   "sym": "sz000502",
+   "name": "绿景退",
+   "delist_date": "2022-06-27",
+   "source": "baostock",
+   "status": "added",
+   "rows": 238,
+   "start": "2021-06-01",
+   "end": "2022-06-24"
+  },
+  {
+   "sym": "sz002447",
+   "name": "晨鑫退",
+   "delist_date": "2022-06-27",
+   "source": "baostock",
+   "status": "added",
+   "rows": 238,
+   "start": "2021-06-01",
+   "end": "2022-06-24"
+  },
+  {
+   "sym": "sz002684",
+   "name": "猛狮退",
+   "delist_date": "2022-06-27",
+   "source": "baostock",
+   "status": "added",
+   "rows": 238,
+   "start": "2021-06-01",
+   "end": "2022-06-24"
+  },
+  {
+   "sym": "sz300064",
+   "name": "金刚退",
+   "delist_date": "2022-06-27",
+   "source": "baostock",
+   "status": "added",
+   "rows": 238,
+   "start": "2021-06-01",
+   "end": "2022-06-24"
+  },
+  {
+   "sym": "sz000611",
+   "name": "天首退",
+   "delist_date": "2022-06-28",
+   "source": "baostock",
+   "status": "added",
+   "rows": 238,
+   "start": "2021-06-01",
+   "end": "2022-06-27"
+  },
+  {
+   "sym": "sz002464",
+   "name": "众应退",
+   "delist_date": "2022-06-28",
+   "source": "baostock",
+   "status": "added",
+   "rows": 237,
+   "start": "2021-06-01",
+   "end": "2022-06-27"
+  },
+  {
+   "sym": "sz300325",
+   "name": "德威退",
+   "delist_date": "2022-06-28",
+   "source": "baostock",
+   "status": "added",
+   "rows": 238,
+   "start": "2021-06-01",
+   "end": "2022-06-27"
+  },
+  {
+   "sym": "sz000613",
+   "name": "东海A退",
+   "delist_date": "2022-06-29",
+   "source": "baostock",
+   "status": "added",
+   "rows": 238,
+   "start": "2021-06-01",
+   "end": "2022-06-28"
+  },
+  {
+   "sym": "sz200613",
+   "name": "东海B退",
+   "delist_date": "2022-06-29",
+   "source": "baostock",
+   "status": "no_data",
+   "reason": "B股不在 all 池 universe（池内无 B 股代码），且 baostock 无覆盖"
+  },
+  {
+   "sym": "sz300023",
+   "name": "宝德退",
+   "delist_date": "2022-06-29",
+   "source": "baostock",
+   "status": "added",
+   "rows": 238,
+   "start": "2021-06-01",
+   "end": "2022-06-28"
+  },
+  {
+   "sym": "sh600146",
+   "name": "退市环球",
+   "delist_date": "2022-06-30",
+   "source": "baostock",
+   "status": "added",
+   "rows": 238,
+   "start": "2021-06-01",
+   "end": "2022-06-23"
+  },
+  {
+   "sym": "sh600870",
+   "name": "退市厦华",
+   "delist_date": "2022-06-30",
+   "source": "baostock",
+   "status": "added",
+   "rows": 238,
+   "start": "2021-06-01",
+   "end": "2022-06-23"
+  },
+  {
+   "sym": "sz300038",
+   "name": "数知退",
+   "delist_date": "2022-06-30",
+   "source": "baostock",
+   "status": "added",
+   "rows": 237,
+   "start": "2021-06-01",
+   "end": "2022-06-29"
+  },
+  {
+   "sym": "sz300367",
+   "name": "网力退",
+   "delist_date": "2022-06-30",
+   "source": "baostock",
+   "status": "added",
+   "rows": 236,
+   "start": "2021-06-01",
+   "end": "2022-06-29"
+  },
+  {
+   "sym": "sz000673",
+   "name": "当代退",
+   "delist_date": "2022-07-04",
+   "source": "baostock",
+   "status": "added",
+   "rows": 238,
+   "start": "2021-06-01",
+   "end": "2022-07-01"
+  },
+  {
+   "sym": "sz300202",
+   "name": "聚龙退",
+   "delist_date": "2022-07-04",
+   "source": "baostock",
+   "status": "added",
+   "rows": 237,
+   "start": "2021-06-01",
+   "end": "2022-07-01"
+  },
+  {
+   "sym": "sz300312",
+   "name": "邦讯退",
+   "delist_date": "2022-07-04",
+   "source": "baostock",
+   "status": "added",
+   "rows": 238,
+   "start": "2021-06-01",
+   "end": "2022-07-01"
+  },
+  {
+   "sym": "sh600090",
+   "name": "退市济堂",
+   "delist_date": "2022-07-07",
+   "source": "baostock",
+   "status": "added",
+   "rows": 224,
+   "start": "2021-06-01",
+   "end": "2022-06-30"
+  },
+  {
+   "sym": "sh600385",
+   "name": "退市金泰",
+   "delist_date": "2022-07-07",
+   "source": "baostock",
+   "status": "added",
+   "rows": 237,
+   "start": "2021-06-01",
+   "end": "2022-06-30"
+  },
+  {
+   "sym": "sh600555",
+   "name": "退市海创",
+   "delist_date": "2022-07-14",
+   "source": "baostock",
+   "status": "added",
+   "rows": 238,
+   "start": "2021-06-01",
+   "end": "2022-07-06"
+  },
+  {
+   "sym": "sh600896",
+   "name": "退市海医",
+   "delist_date": "2022-07-25",
+   "source": "baostock",
+   "status": "added",
+   "rows": 238,
+   "start": "2021-06-01",
+   "end": "2022-07-18"
+  },
+  {
+   "sym": "sh600260",
+   "name": "*ST凯乐",
+   "delist_date": "2023-02-15",
+   "source": "baostock",
+   "status": "added",
+   "rows": 404,
+   "start": "2021-06-01",
+   "end": "2023-02-02"
+  },
+  {
+   "sym": "sz002013",
+   "name": "中航机电",
+   "delist_date": "2023-03-17",
+   "source": "baostock",
+   "status": "added",
+   "rows": 398,
+   "start": "2021-06-01",
+   "end": "2023-02-07"
+  },
+  {
+   "sym": "sh600139",
+   "name": "*ST西源",
+   "delist_date": "2023-03-27",
+   "source": "baostock",
+   "status": "added",
+   "rows": 422,
+   "start": "2021-06-01",
+   "end": "2023-02-27"
+  },
+  {
+   "sym": "sh600311",
+   "name": "*ST荣华",
+   "delist_date": "2023-03-27",
+   "source": "baostock",
+   "status": "added",
+   "rows": 425,
+   "start": "2021-06-01",
+   "end": "2023-03-02"
+  },
+  {
+   "sym": "sz000587",
+   "name": "*ST金洲",
+   "delist_date": "2023-04-03",
+   "source": "baostock",
+   "status": "added",
+   "rows": 406,
+   "start": "2021-06-01",
+   "end": "2023-02-02"
+  },
+  {
+   "sym": "sz002499",
+   "name": "科林退",
+   "delist_date": "2023-04-18",
+   "source": "baostock",
+   "status": "added",
+   "rows": 421,
+   "start": "2021-06-01",
+   "end": "2023-04-17"
+  },
+  {
+   "sym": "sz300330",
+   "name": "计通退",
+   "delist_date": "2023-05-24",
+   "source": "baostock",
+   "status": "added",
+   "rows": 401,
+   "start": "2021-06-01",
+   "end": "2023-05-23"
+  },
+  {
+   "sym": "sz300309",
+   "name": "吉艾退",
+   "delist_date": "2023-05-30",
+   "source": "baostock",
+   "status": "added",
+   "rows": 458,
+   "start": "2021-06-01",
+   "end": "2023-05-29"
+  },
+  {
+   "sym": "sh600466",
+   "name": "*ST蓝光",
+   "delist_date": "2023-06-06",
+   "source": "baostock",
+   "status": "added",
+   "rows": 469,
+   "start": "2021-06-01",
+   "end": "2023-05-09"
+  },
+  {
+   "sym": "sz000150",
+   "name": "*ST宜康",
+   "delist_date": "2023-06-09",
+   "source": "baostock",
+   "status": "added",
+   "rows": 464,
+   "start": "2021-06-01",
+   "end": "2023-04-27"
+  },
+  {
+   "sym": "sh600122",
+   "name": "*ST宏图",
+   "delist_date": "2023-06-26",
+   "source": "baostock",
+   "status": "added",
+   "rows": 482,
+   "start": "2021-06-01",
+   "end": "2023-05-26"
+  },
+  {
+   "sym": "sh600532",
+   "name": "退市未来",
+   "delist_date": "2023-06-28",
+   "source": "baostock",
+   "status": "added",
+   "rows": 437,
+   "start": "2021-06-01",
+   "end": "2023-06-19"
+  },
+  {
+   "sym": "sh600781",
+   "name": "退市辅仁",
+   "delist_date": "2023-06-28",
+   "source": "baostock",
+   "status": "added",
+   "rows": 441,
+   "start": "2021-06-01",
+   "end": "2023-06-19"
+  },
+  {
+   "sym": "sh600242",
+   "name": "退市中昌",
+   "delist_date": "2023-06-29",
+   "source": "baostock",
+   "status": "added",
+   "rows": 480,
+   "start": "2021-06-01",
+   "end": "2023-06-20"
+  },
+  {
+   "sym": "sh600767",
+   "name": "退市运盛",
+   "delist_date": "2023-06-29",
+   "source": "baostock",
+   "status": "added",
+   "rows": 478,
+   "start": "2021-06-01",
+   "end": "2023-06-20"
+  },
+  {
+   "sym": "sh601258",
+   "name": "*ST庞大",
+   "delist_date": "2023-06-30",
+   "source": "baostock",
+   "status": "added",
+   "rows": 480,
+   "start": "2021-06-01",
+   "end": "2023-05-24"
+  },
+  {
+   "sym": "sz000540",
+   "name": "*ST中天",
+   "delist_date": "2023-06-30",
+   "source": "baostock",
+   "status": "added",
+   "rows": 476,
+   "start": "2021-06-01",
+   "end": "2023-05-18"
+  },
+  {
+   "sym": "sz002781",
+   "name": "奇信退",
+   "delist_date": "2023-07-05",
+   "source": "baostock",
+   "status": "added",
+   "rows": 479,
+   "start": "2021-06-01",
+   "end": "2023-07-04"
+  },
+  {
+   "sym": "sz300336",
+   "name": "新文退",
+   "delist_date": "2023-07-05",
+   "source": "baostock",
+   "status": "added",
+   "rows": 478,
+   "start": "2021-06-01",
+   "end": "2023-07-04"
+  },
+  {
+   "sym": "sz000606",
+   "name": "顺利退",
+   "delist_date": "2023-07-06",
+   "source": "baostock",
+   "status": "added",
+   "rows": 480,
+   "start": "2021-06-01",
+   "end": "2023-07-05"
+  },
+  {
+   "sym": "sz000806",
+   "name": "银河退",
+   "delist_date": "2023-07-06",
+   "source": "baostock",
+   "status": "added",
+   "rows": 479,
+   "start": "2021-06-01",
+   "end": "2023-07-05"
+  },
+  {
+   "sym": "sz300273",
+   "name": "和佳退",
+   "delist_date": "2023-07-06",
+   "source": "baostock",
+   "status": "added",
+   "rows": 479,
+   "start": "2021-06-01",
+   "end": "2023-07-05"
+  },
+  {
+   "sym": "sh688086",
+   "name": "退市紫晶",
+   "delist_date": "2023-07-07",
+   "source": "baostock",
+   "status": "added",
+   "rows": 474,
+   "start": "2021-06-01",
+   "end": "2023-06-30"
+  },
+  {
+   "sym": "sh688555",
+   "name": "退市泽达",
+   "delist_date": "2023-07-07",
+   "source": "baostock",
+   "status": "added",
+   "rows": 472,
+   "start": "2021-06-01",
+   "end": "2023-06-30"
+  },
+  {
+   "sym": "sz002417",
+   "name": "深南退",
+   "delist_date": "2023-07-10",
+   "source": "baostock",
+   "status": "added",
+   "rows": 479,
+   "start": "2021-06-01",
+   "end": "2023-07-07"
+  },
+  {
+   "sym": "sz200152",
+   "name": "山航B退",
+   "delist_date": "2023-07-10",
+   "source": "baostock",
+   "status": "no_data",
+   "reason": "B股不在 all 池 universe（池内无 B 股代码），且 baostock 无覆盖"
+  },
+  {
+   "sym": "sz300392",
+   "name": "腾信退",
+   "delist_date": "2023-07-10",
+   "source": "baostock",
+   "status": "added",
+   "rows": 480,
+   "start": "2021-06-01",
+   "end": "2023-07-07"
+  },
+  {
+   "sym": "sz000038",
+   "name": "大通退",
+   "delist_date": "2023-07-12",
+   "source": "baostock",
+   "status": "added",
+   "rows": 480,
+   "start": "2021-06-01",
+   "end": "2023-07-11"
+  },
+  {
+   "sym": "sz002411",
+   "name": "必康退",
+   "delist_date": "2023-07-12",
+   "source": "baostock",
+   "status": "added",
+   "rows": 441,
+   "start": "2021-06-01",
+   "end": "2023-07-11"
+  },
+  {
+   "sym": "sz300526",
+   "name": "中潜退",
+   "delist_date": "2023-07-12",
+   "source": "baostock",
+   "status": "added",
+   "rows": 479,
+   "start": "2021-06-01",
+   "end": "2023-07-11"
+  },
+  {
+   "sym": "sz002751",
+   "name": "易尚退",
+   "delist_date": "2023-07-13",
+   "source": "baostock",
+   "status": "added",
+   "rows": 480,
+   "start": "2021-06-01",
+   "end": "2023-07-12"
+  },
+  {
+   "sym": "sz300089",
+   "name": "文化退",
+   "delist_date": "2023-07-13",
+   "source": "baostock",
+   "status": "added",
+   "rows": 479,
+   "start": "2021-06-01",
+   "end": "2023-07-12"
+  },
+  {
+   "sym": "sz300356",
+   "name": "光一退",
+   "delist_date": "2023-07-13",
+   "source": "baostock",
+   "status": "added",
+   "rows": 478,
+   "start": "2021-06-01",
+   "end": "2023-07-12"
+  },
+  {
+   "sym": "sz000667",
+   "name": "ST美置",
+   "delist_date": "2023-07-14",
+   "source": "baostock",
+   "status": "added",
+   "rows": 481,
+   "start": "2021-06-01",
+   "end": "2023-05-25"
+  },
+  {
+   "sym": "sh600393",
+   "name": "ST粤泰",
+   "delist_date": "2023-07-18",
+   "source": "baostock",
+   "status": "added",
+   "rows": 490,
+   "start": "2021-06-01",
+   "end": "2023-06-08"
+  },
+  {
+   "sym": "sh600077",
+   "name": "*ST宋都",
+   "delist_date": "2023-07-25",
+   "source": "baostock",
+   "status": "added",
+   "rows": 494,
+   "start": "2021-06-01",
+   "end": "2023-06-13"
+  },
+  {
+   "sym": "sz000918",
+   "name": "*ST嘉凯",
+   "delist_date": "2023-07-28",
+   "source": "baostock",
+   "status": "added",
+   "rows": 481,
+   "start": "2021-06-01",
+   "end": "2023-05-31"
+  },
+  {
+   "sym": "sz300297",
+   "name": "蓝盾退",
+   "delist_date": "2023-07-31",
+   "source": "baostock",
+   "status": "added",
+   "rows": 477,
+   "start": "2021-06-01",
+   "end": "2023-07-28"
+  },
+  {
+   "sym": "sz000732",
+   "name": "ST泰禾",
+   "delist_date": "2023-08-04",
+   "source": "baostock",
+   "status": "added",
+   "rows": 487,
+   "start": "2021-06-01",
+   "end": "2023-06-02"
+  },
+  {
+   "sym": "sz002118",
+   "name": "*ST紫鑫",
+   "delist_date": "2023-08-04",
+   "source": "baostock",
+   "status": "added",
+   "rows": 457,
+   "start": "2021-06-01",
+   "end": "2023-06-15"
+  },
+  {
+   "sym": "sz002113",
+   "name": "*ST天润",
+   "delist_date": "2023-08-11",
+   "source": "baostock",
+   "status": "added",
+   "rows": 492,
+   "start": "2021-06-01",
+   "end": "2023-06-12"
+  },
+  {
+   "sym": "sz002503",
+   "name": "*ST搜特",
+   "delist_date": "2023-08-11",
+   "source": "baostock",
+   "status": "added",
+   "rows": 477,
+   "start": "2021-06-01",
+   "end": "2023-05-22"
+  },
+  {
+   "sym": "sz000671",
+   "name": "ST阳光城",
+   "delist_date": "2023-08-16",
+   "source": "baostock",
+   "status": "added",
+   "rows": 492,
+   "start": "2021-06-01",
+   "end": "2023-06-09"
+  },
+  {
+   "sym": "sz002504",
+   "name": "*ST弘高",
+   "delist_date": "2023-08-21",
+   "source": "baostock",
+   "status": "added",
+   "rows": 493,
+   "start": "2021-06-01",
+   "end": "2023-06-12"
+  },
+  {
+   "sym": "sz000616",
+   "name": "*ST海投",
+   "delist_date": "2023-08-23",
+   "source": "baostock",
+   "status": "added",
+   "rows": 494,
+   "start": "2021-06-01",
+   "end": "2023-06-13"
+  },
+  {
+   "sym": "sz000666",
+   "name": "经纬纺机",
+   "delist_date": "2023-10-26",
+   "source": "baostock",
+   "status": "added",
+   "rows": 548,
+   "start": "2021-06-01",
+   "end": "2023-08-31"
+  },
+  {
+   "sym": "sh600290",
+   "name": "*ST华仪",
+   "delist_date": "2024-01-16",
+   "source": "baostock",
+   "status": "added",
+   "rows": 622,
+   "start": "2021-06-01",
+   "end": "2023-12-25"
+  },
+  {
+   "sym": "sz002776",
+   "name": "*ST柏龙",
+   "delist_date": "2024-01-25",
+   "source": "baostock",
+   "status": "added",
+   "rows": 585,
+   "start": "2021-06-01",
+   "end": "2023-12-26"
+  },
+  {
+   "sym": "sz000046",
+   "name": "*ST泛海",
+   "delist_date": "2024-02-07",
+   "source": "baostock",
+   "status": "added",
+   "rows": 627,
+   "start": "2021-06-01",
+   "end": "2023-12-27"
+  },
+  {
+   "sym": "sz002740",
+   "name": "*ST爱迪",
+   "delist_date": "2024-03-04",
+   "source": "baostock",
+   "status": "added",
+   "rows": 642,
+   "start": "2021-06-01",
+   "end": "2024-01-19"
+  },
+  {
+   "sym": "sz002002",
+   "name": "ST鸿达",
+   "delist_date": "2024-03-18",
+   "source": "baostock",
+   "status": "added",
+   "rows": 642,
+   "start": "2021-06-01",
+   "end": "2024-01-18"
+  },
+  {
+   "sym": "sh603555",
+   "name": "ST贵人",
+   "delist_date": "2024-03-29",
+   "source": "baostock",
+   "status": "added",
+   "rows": 669,
+   "start": "2021-06-01",
+   "end": "2024-03-07"
+  },
+  {
+   "sym": "sz002089",
+   "name": "新海退",
+   "delist_date": "2024-04-18",
+   "source": "baostock",
+   "status": "added",
+   "rows": 669,
+   "start": "2021-06-01",
+   "end": "2024-04-17"
+  },
+  {
+   "sym": "sh603603",
+   "name": "退市博天",
+   "delist_date": "2024-04-25",
+   "source": "baostock",
+   "status": "added",
+   "rows": 656,
+   "start": "2021-06-07",
+   "end": "2024-04-18"
+  },
+  {
+   "sym": "sz000005",
+   "name": "ST星源",
+   "delist_date": "2024-04-26",
+   "source": "baostock",
+   "status": "added",
+   "rows": 670,
+   "start": "2021-06-01",
+   "end": "2024-03-05"
+  },
+  {
+   "sym": "sz000416",
+   "name": "*ST民控",
+   "delist_date": "2024-06-05",
+   "source": "baostock",
+   "status": "added",
+   "rows": 703,
+   "start": "2021-06-01",
+   "end": "2024-04-24"
+  },
+  {
+   "sym": "sz002699",
+   "name": "*ST美盛",
+   "delist_date": "2024-06-05",
+   "source": "baostock",
+   "status": "added",
+   "rows": 703,
+   "start": "2021-06-01",
+   "end": "2024-04-25"
+  },
+  {
+   "sym": "sh600823",
+   "name": "*ST世茂",
+   "delist_date": "2024-06-14",
+   "source": "baostock",
+   "status": "added",
+   "rows": 714,
+   "start": "2021-06-01",
+   "end": "2024-05-15"
+  },
+  {
+   "sym": "sh600306",
+   "name": "退市商城",
+   "delist_date": "2024-06-26",
+   "source": "baostock",
+   "status": "added",
+   "rows": 719,
+   "start": "2021-06-01",
+   "end": "2024-06-19"
+  },
+  {
+   "sym": "sh600321",
+   "name": "正源股份",
+   "delist_date": "2024-06-27",
+   "source": "baostock",
+   "status": "added",
+   "rows": 727,
+   "start": "2021-06-01",
+   "end": "2024-05-30"
+  },
+  {
+   "sym": "sz000996",
+   "name": "中期退",
+   "delist_date": "2024-06-28",
+   "source": "baostock",
+   "status": "added",
+   "rows": 712,
+   "start": "2021-06-01",
+   "end": "2024-06-27"
+  },
+  {
+   "sym": "sz002087",
+   "name": "新纺退",
+   "delist_date": "2024-06-28",
+   "source": "baostock",
+   "status": "added",
+   "rows": 721,
+   "start": "2021-06-01",
+   "end": "2024-06-27"
+  },
+  {
+   "sym": "sh600647",
+   "name": "退市同达",
+   "delist_date": "2024-07-03",
+   "source": "baostock",
+   "status": "added",
+   "rows": 695,
+   "start": "2021-06-01",
+   "end": "2024-06-26"
+  },
+  {
+   "sym": "sh600766",
+   "name": "退市园城",
+   "delist_date": "2024-07-03",
+   "source": "baostock",
+   "status": "added",
+   "rows": 701,
+   "start": "2021-06-01",
+   "end": "2024-06-26"
+  },
+  {
+   "sym": "sh603133",
+   "name": "退市碳元",
+   "delist_date": "2024-07-03",
+   "source": "baostock",
+   "status": "added",
+   "rows": 714,
+   "start": "2021-06-01",
+   "end": "2024-06-26"
+  },
+  {
+   "sym": "sh900953",
+   "name": "凯马Ｂ",
+   "delist_date": "2024-07-05",
+   "source": "baostock",
+   "status": "no_data",
+   "reason": "B股不在 all 池 universe（池内无 B 股代码），且 baostock 无覆盖"
+  },
+  {
+   "sym": "sz002433",
+   "name": "太安退",
+   "delist_date": "2024-07-05",
+   "source": "baostock",
+   "status": "added",
+   "rows": 691,
+   "start": "2021-06-01",
+   "end": "2024-07-04"
+  },
+  {
+   "sym": "sh600220",
+   "name": "ST阳光",
+   "delist_date": "2024-07-10",
+   "source": "baostock",
+   "status": "added",
+   "rows": 735,
+   "start": "2021-06-01",
+   "end": "2024-06-13"
+  },
+  {
+   "sym": "sh600836",
+   "name": "*ST易连",
+   "delist_date": "2024-07-11",
+   "source": "baostock",
+   "status": "added",
+   "rows": 737,
+   "start": "2021-06-01",
+   "end": "2024-06-17"
+  },
+  {
+   "sym": "sz000961",
+   "name": "ST中南",
+   "delist_date": "2024-07-11",
+   "source": "baostock",
+   "status": "added",
+   "rows": 710,
+   "start": "2021-06-01",
+   "end": "2024-05-08"
+  },
+  {
+   "sym": "sh600277",
+   "name": "ST亿利",
+   "delist_date": "2024-07-18",
+   "source": "baostock",
+   "status": "added",
+   "rows": 741,
+   "start": "2021-06-01",
+   "end": "2024-06-21"
+  },
+  {
+   "sym": "sz300282",
+   "name": "三盛退",
+   "delist_date": "2024-07-18",
+   "source": "baostock",
+   "status": "added",
+   "rows": 721,
+   "start": "2021-06-01",
+   "end": "2024-07-17"
+  },
+  {
+   "sym": "sz300742",
+   "name": "越博退",
+   "delist_date": "2024-07-22",
+   "source": "baostock",
+   "status": "added",
+   "rows": 722,
+   "start": "2021-06-01",
+   "end": "2024-07-19"
+  },
+  {
+   "sym": "sz000971",
+   "name": "*ST高升",
+   "delist_date": "2024-07-24",
+   "source": "baostock",
+   "status": "added",
+   "rows": 728,
+   "start": "2021-06-01",
+   "end": "2024-06-04"
+  },
+  {
+   "sym": "sz300116",
+   "name": "*ST保力",
+   "delist_date": "2024-07-25",
+   "source": "baostock",
+   "status": "added",
+   "rows": 716,
+   "start": "2021-06-01",
+   "end": "2024-05-16"
+  },
+  {
+   "sym": "sz300799",
+   "name": "左江退",
+   "delist_date": "2024-07-29",
+   "source": "baostock",
+   "status": "added",
+   "rows": 715,
+   "start": "2021-06-01",
+   "end": "2024-07-26"
+  },
+  {
+   "sym": "sz002621",
+   "name": "*ST美吉",
+   "delist_date": "2024-08-05",
+   "source": "baostock",
+   "status": "added",
+   "rows": 735,
+   "start": "2021-06-01",
+   "end": "2024-06-13"
+  },
+  {
+   "sym": "sh600565",
+   "name": "ST迪马",
+   "delist_date": "2024-08-07",
+   "source": "baostock",
+   "status": "added",
+   "rows": 741,
+   "start": "2021-06-01",
+   "end": "2024-06-21"
+  },
+  {
+   "sym": "sz000836",
+   "name": "ST富通",
+   "delist_date": "2024-08-12",
+   "source": "baostock",
+   "status": "added",
+   "rows": 737,
+   "start": "2021-06-01",
+   "end": "2024-06-17"
+  },
+  {
+   "sym": "sz000982",
+   "name": "中银绒业",
+   "delist_date": "2024-08-12",
+   "source": "baostock",
+   "status": "added",
+   "rows": 741,
+   "start": "2021-06-01",
+   "end": "2024-06-21"
+  },
+  {
+   "sym": "sz002610",
+   "name": "ST爱康",
+   "delist_date": "2024-08-12",
+   "source": "baostock",
+   "status": "added",
+   "rows": 738,
+   "start": "2021-06-01",
+   "end": "2024-06-18"
+  },
+  {
+   "sym": "sh600112",
+   "name": "*ST天成",
+   "delist_date": "2024-08-15",
+   "source": "baostock",
+   "status": "added",
+   "rows": 730,
+   "start": "2021-06-01",
+   "end": "2024-07-19"
+  },
+  {
+   "sym": "sz002325",
+   "name": "*ST洪涛",
+   "delist_date": "2024-08-15",
+   "source": "baostock",
+   "status": "added",
+   "rows": 746,
+   "start": "2021-06-01",
+   "end": "2024-06-28"
+  },
+  {
+   "sym": "sz002435",
+   "name": "ST长康",
+   "delist_date": "2024-08-15",
+   "source": "baostock",
+   "status": "added",
+   "rows": 747,
+   "start": "2021-06-01",
+   "end": "2024-07-01"
+  },
+  {
+   "sym": "sz002280",
+   "name": "ST联络",
+   "delist_date": "2024-08-16",
+   "source": "baostock",
+   "status": "added",
+   "rows": 744,
+   "start": "2021-06-01",
+   "end": "2024-06-26"
+  },
+  {
+   "sym": "sz002288",
+   "name": "*ST超华",
+   "delist_date": "2024-08-19",
+   "source": "baostock",
+   "status": "added",
+   "rows": 739,
+   "start": "2021-06-01",
+   "end": "2024-06-26"
+  },
+  {
+   "sym": "sz300262",
+   "name": "*ST巴安",
+   "delist_date": "2024-08-19",
+   "source": "baostock",
+   "status": "added",
+   "rows": 738,
+   "start": "2021-06-01",
+   "end": "2024-06-18"
+  },
+  {
+   "sym": "sz200054",
+   "name": "建车B",
+   "delist_date": "2024-08-22",
+   "source": "baostock",
+   "status": "no_data",
+   "reason": "B股不在 all 池 universe（池内无 B 股代码），且 baostock 无覆盖"
+  },
+  {
+   "sym": "sz002341",
+   "name": "ST新纶",
+   "delist_date": "2024-08-23",
+   "source": "baostock",
+   "status": "added",
+   "rows": 743,
+   "start": "2021-06-01",
+   "end": "2024-07-02"
+  },
+  {
+   "sym": "sz002665",
+   "name": "ST航高",
+   "delist_date": "2024-08-26",
+   "source": "baostock",
+   "status": "added",
+   "rows": 745,
+   "start": "2021-06-01",
+   "end": "2024-06-27"
+  },
+  {
+   "sym": "sz000976",
+   "name": "*ST华铁",
+   "delist_date": "2024-08-27",
+   "source": "baostock",
+   "status": "added",
+   "rows": 720,
+   "start": "2021-06-01",
+   "end": "2024-07-25"
+  },
+  {
+   "sym": "sh600297",
+   "name": "广汇汽车",
+   "delist_date": "2024-08-28",
+   "source": "baostock",
+   "status": "added",
+   "rows": 760,
+   "start": "2021-06-01",
+   "end": "2024-07-17"
+  },
+  {
+   "sym": "sz002505",
+   "name": "鹏都农牧",
+   "delist_date": "2024-08-30",
+   "source": "baostock",
+   "status": "added",
+   "rows": 749,
+   "start": "2021-06-01",
+   "end": "2024-07-02"
+  },
+  {
+   "sym": "sz000023",
+   "name": "*ST深天",
+   "delist_date": "2024-09-02",
+   "source": "baostock",
+   "status": "added",
+   "rows": 763,
+   "start": "2021-06-01",
+   "end": "2024-07-24"
+  },
+  {
+   "sym": "sz002502",
+   "name": "ST鼎龙",
+   "delist_date": "2024-09-05",
+   "source": "baostock",
+   "status": "added",
+   "rows": 758,
+   "start": "2021-06-01",
+   "end": "2024-07-16"
+  },
+  {
+   "sym": "sz000861",
+   "name": "海印股份",
+   "delist_date": "2024-09-18",
+   "source": "baostock",
+   "status": "added",
+   "rows": 763,
+   "start": "2021-06-01",
+   "end": "2024-08-05"
+  },
+  {
+   "sym": "sz300495",
+   "name": "*ST美尚",
+   "delist_date": "2024-09-20",
+   "source": "baostock",
+   "status": "added",
+   "rows": 711,
+   "start": "2021-06-01",
+   "end": "2024-05-08"
+  },
+  {
+   "sym": "sz002308",
+   "name": "*ST威创",
+   "delist_date": "2024-09-27",
+   "source": "baostock",
+   "status": "added",
+   "rows": 741,
+   "start": "2021-06-01",
+   "end": "2024-08-22"
+  },
+  {
+   "sym": "sz000413",
+   "name": "ST旭电",
+   "delist_date": "2024-10-11",
+   "source": "baostock",
+   "status": "added",
+   "rows": 735,
+   "start": "2021-06-01",
+   "end": "2024-08-14"
+  },
+  {
+   "sym": "sz200413",
+   "name": "ST东旭B",
+   "delist_date": "2024-10-11",
+   "source": "baostock",
+   "status": "no_data",
+   "reason": "B股不在 all 池 universe（池内无 B 股代码），且 baostock 无覆盖"
+  },
+  {
+   "sym": "sh600213",
+   "name": "*ST亚星",
+   "delist_date": "2024-10-17",
+   "source": "baostock",
+   "status": "added",
+   "rows": 775,
+   "start": "2021-06-01",
+   "end": "2024-08-15"
+  },
+  {
+   "sym": "sh600898",
+   "name": "*ST美讯",
+   "delist_date": "2025-02-10",
+   "source": "baostock",
+   "status": "added",
+   "rows": 876,
+   "start": "2021-06-01",
+   "end": "2025-01-10"
+  },
+  {
+   "sym": "sh600837",
+   "name": "海通证券",
+   "delist_date": "2025-03-04",
+   "source": "baostock",
+   "status": "added",
+   "rows": 874,
+   "start": "2021-06-01",
+   "end": "2025-02-05"
+  },
+  {
+   "sym": "sh600083",
+   "name": "*ST博信",
+   "delist_date": "2025-03-05",
+   "source": "baostock",
+   "status": "added",
+   "rows": 881,
+   "start": "2021-06-01",
+   "end": "2025-01-16"
+  },
+  {
+   "sym": "sh600225",
+   "name": "退市卓朗",
+   "delist_date": "2025-03-06",
+   "source": "baostock",
+   "status": "added",
+   "rows": 876,
+   "start": "2021-06-01",
+   "end": "2025-02-27"
+  },
+  {
+   "sym": "sh603963",
+   "name": "*ST大药",
+   "delist_date": "2025-03-21",
+   "source": "baostock",
+   "status": "added",
+   "rows": 890,
+   "start": "2021-06-01",
+   "end": "2025-02-07"
+  },
+  {
+   "sym": "sh600070",
+   "name": "*ST富润",
+   "delist_date": "2025-04-30",
+   "source": "baostock",
+   "status": "added",
+   "rows": 930,
+   "start": "2021-06-01",
+   "end": "2025-04-10"
+  },
+  {
+   "sym": "sh600811",
+   "name": "*ST东方",
+   "delist_date": "2025-04-30",
+   "source": "baostock",
+   "status": "added",
+   "rows": 927,
+   "start": "2021-06-01",
+   "end": "2025-04-14"
+  },
+  {
+   "sym": "sz000040",
+   "name": "*ST旭蓝",
+   "delist_date": "2025-04-30",
+   "source": "baostock",
+   "status": "added",
+   "rows": 846,
+   "start": "2021-06-01",
+   "end": "2025-03-31"
+  },
+  {
+   "sym": "sz300117",
+   "name": "*ST嘉寓",
+   "delist_date": "2025-04-30",
+   "source": "baostock",
+   "status": "added",
+   "rows": 928,
+   "start": "2021-06-01",
+   "end": "2025-03-31"
+  },
+  {
+   "sym": "sz300630",
+   "name": "普利退",
+   "delist_date": "2025-05-22",
+   "source": "baostock",
+   "status": "added",
+   "rows": 893,
+   "start": "2021-06-01",
+   "end": "2025-05-21"
+  },
+  {
+   "sym": "sh600705",
+   "name": "中航产融",
+   "delist_date": "2025-05-27",
+   "source": "baostock",
+   "status": "added",
+   "rows": 930,
+   "start": "2021-06-01",
+   "end": "2025-04-02"
+  },
+  {
+   "sym": "sh601028",
+   "name": "玉龙股份",
+   "delist_date": "2025-05-27",
+   "source": "baostock",
+   "status": "added",
+   "rows": 923,
+   "start": "2021-06-01",
+   "end": "2025-03-26"
+  },
+  {
+   "sym": "sz300108",
+   "name": "*ST吉药",
+   "delist_date": "2025-05-29",
+   "source": "baostock",
+   "status": "added",
+   "rows": 904,
+   "start": "2021-06-01",
+   "end": "2025-04-23"
+  },
+  {
+   "sym": "sz002750",
+   "name": "龙津退",
+   "delist_date": "2025-06-27",
+   "source": "baostock",
+   "status": "added",
+   "rows": 960,
+   "start": "2021-06-01",
+   "end": "2025-06-26"
+  },
+  {
+   "sym": "sh600804",
+   "name": "退市鹏博",
+   "delist_date": "2025-07-03",
+   "source": "baostock",
+   "status": "added",
+   "rows": 959,
+   "start": "2021-06-01",
+   "end": "2025-06-30"
+  },
+  {
+   "sym": "sh603003",
+   "name": "退市龙宇",
+   "delist_date": "2025-07-03",
+   "source": "baostock",
+   "status": "added",
+   "rows": 963,
+   "start": "2021-06-01",
+   "end": "2025-06-30"
+  },
+  {
+   "sym": "sh900957",
+   "name": "*ST凌云B",
+   "delist_date": "2025-07-04",
+   "source": "baostock",
+   "status": "no_data",
+   "reason": "B股不在 all 池 universe（池内无 B 股代码），且 baostock 无覆盖"
+  },
+  {
+   "sym": "sz002336",
+   "name": "人乐退",
+   "delist_date": "2025-07-04",
+   "source": "baostock",
+   "status": "added",
+   "rows": 959,
+   "start": "2021-06-01",
+   "end": "2025-07-03"
+  },
+  {
+   "sym": "sh600387",
+   "name": "退市海越",
+   "delist_date": "2025-07-11",
+   "source": "baostock",
+   "status": "added",
+   "rows": 961,
+   "start": "2021-06-01",
+   "end": "2025-07-04"
+  },
+  {
+   "sym": "sz000584",
+   "name": "工智退",
+   "delist_date": "2025-07-11",
+   "source": "baostock",
+   "status": "added",
+   "rows": 950,
+   "start": "2021-06-01",
+   "end": "2025-07-10"
+  },
+  {
+   "sym": "sz000622",
+   "name": "恒立退",
+   "delist_date": "2025-07-16",
+   "source": "baostock",
+   "status": "added",
+   "rows": 964,
+   "start": "2021-06-01",
+   "end": "2025-07-15"
+  },
+  {
+   "sym": "sh600462",
+   "name": "退市九有",
+   "delist_date": "2025-07-21",
+   "source": "baostock",
+   "status": "added",
+   "rows": 953,
+   "start": "2021-06-01",
+   "end": "2025-07-14"
+  },
+  {
+   "sym": "sz300208",
+   "name": "中程退",
+   "delist_date": "2025-07-21",
+   "source": "baostock",
+   "status": "added",
+   "rows": 964,
+   "start": "2021-06-01",
+   "end": "2025-07-18"
+  },
+  {
+   "sym": "sh600190",
+   "name": "退市锦港",
+   "delist_date": "2025-07-28",
+   "source": "baostock",
+   "status": "added",
+   "rows": 944,
+   "start": "2021-06-01",
+   "end": "2025-07-18"
+  },
+  {
+   "sym": "sh601989",
+   "name": "中国重工",
+   "delist_date": "2025-09-05",
+   "source": "baostock",
+   "status": "added",
+   "rows": 1010,
+   "start": "2021-06-01",
+   "end": "2025-08-12"
+  },
+  {
+   "sym": "sz000627",
+   "name": "*ST天茂",
+   "delist_date": "2025-09-30",
+   "source": "baostock",
+   "status": "added",
+   "rows": 975,
+   "start": "2021-06-01",
+   "end": "2025-08-13"
+  },
+  {
+   "sym": "sz300280",
+   "name": "紫天退",
+   "delist_date": "2025-10-14",
+   "source": "baostock",
+   "status": "added",
+   "rows": 933,
+   "start": "2021-06-01",
+   "end": "2025-10-13"
+  },
+  {
+   "sym": "sz000851",
+   "name": "*ST高鸿",
+   "delist_date": "2025-11-11",
+   "source": "baostock",
+   "status": "added",
+   "rows": 1051,
+   "start": "2021-06-01",
+   "end": "2025-09-26"
+  },
+  {
+   "sym": "sh603388",
+   "name": "*ST元成",
+   "delist_date": "2025-12-05",
+   "source": "baostock",
+   "status": "added",
+   "rows": 1076,
+   "start": "2021-06-01",
+   "end": "2025-11-10"
+  },
+  {
+   "sym": "sz200771",
+   "name": "杭汽轮Ｂ",
+   "delist_date": "2025-12-22",
+   "source": "baostock",
+   "status": "no_data",
+   "reason": "B股不在 all 池 universe（池内无 B 股代码），且 baostock 无覆盖"
+  },
+  {
+   "sym": "sh600200",
+   "name": "退市苏吴",
+   "delist_date": "2025-12-31",
+   "source": "baostock",
+   "status": "added",
+   "rows": 1103,
+   "start": "2021-06-01",
+   "end": "2025-12-29"
+  },
+  {
+   "sym": "sz300379",
+   "name": "东通退",
+   "delist_date": "2026-01-22",
+   "source": "baostock",
+   "status": "added",
+   "rows": 1103,
+   "start": "2021-06-01",
+   "end": "2026-01-21"
+  },
+  {
+   "sym": "sz002231",
+   "name": "*ST奥维",
+   "delist_date": "2026-03-27",
+   "source": "baostock",
+   "status": "added",
+   "rows": 1133,
+   "start": "2021-06-01",
+   "end": "2026-01-29"
+  },
+  {
+   "sym": "sh603056",
+   "name": "德邦股份",
+   "delist_date": "2026-03-31",
+   "source": "baostock",
+   "status": "added",
+   "rows": 1114,
+   "start": "2021-06-01",
+   "end": "2026-01-20"
+  },
+  {
+   "sym": "sz300391",
+   "name": "长药退",
+   "delist_date": "2026-04-13",
+   "source": "baostock",
+   "status": "added",
+   "rows": 1144,
+   "start": "2021-06-01",
+   "end": "2026-04-10"
+  },
+  {
+   "sym": "sz300344",
+   "name": "立方退",
+   "delist_date": "2026-04-22",
+   "source": "baostock",
+   "status": "added",
+   "rows": 1151,
+   "start": "2021-06-01",
+   "end": "2026-04-21"
+  },
+  {
+   "sym": "sh600355",
+   "name": "*ST精伦",
+   "delist_date": "2026-04-27",
+   "source": "baostock",
+   "status": "added",
+   "rows": 1173,
+   "start": "2021-06-01",
+   "end": "2026-04-03"
+  },
+  {
+   "sym": "sz000638",
+   "name": "*ST万方",
+   "delist_date": "2026-06-03",
+   "source": "baostock",
+   "status": "added",
+   "rows": 1176,
+   "start": "2021-06-01",
+   "end": "2026-04-13"
+  },
+  {
+   "sym": "sh688287",
+   "name": "退市观典",
+   "delist_date": "2026-06-10",
+   "source": "baostock",
+   "status": "added",
+   "rows": 963,
+   "start": "2022-05-25",
+   "end": "2026-06-08"
+  },
+  {
+   "sym": "sh600421",
+   "name": "退市华嵘",
+   "delist_date": "2026-06-26",
+   "source": "baostock",
+   "status": "added",
+   "rows": 1167,
+   "start": "2021-06-01",
+   "end": "2026-06-22"
+  },
+  {
+   "sym": "sh600599",
+   "name": "退市熊猫",
+   "delist_date": "2026-06-26",
+   "source": "baostock",
+   "status": "added",
+   "rows": 1200,
+   "start": "2021-06-01",
+   "end": "2026-06-22"
+  },
+  {
+   "sym": "sh600636",
+   "name": "退市国化",
+   "delist_date": "2026-06-29",
+   "source": "baostock",
+   "status": "added",
+   "rows": 1205,
+   "start": "2021-06-01",
+   "end": "2026-06-22"
+  },
+  {
+   "sym": "sh600696",
+   "name": "退市岩石",
+   "delist_date": "2026-06-29",
+   "source": "baostock",
+   "status": "added",
+   "rows": 1204,
+   "start": "2021-06-01",
+   "end": "2026-06-22"
+  },
+  {
+   "sym": "sh600608",
+   "name": "退市沪科",
+   "delist_date": "2026-07-03",
+   "source": "baostock",
+   "status": "added",
+   "rows": 1205,
+   "start": "2021-06-01",
+   "end": "2026-06-29"
+  },
+  {
+   "sym": "sh605081",
+   "name": "退市太和",
+   "delist_date": "2026-07-03",
+   "source": "baostock",
+   "status": "added",
+   "rows": 1200,
+   "start": "2021-06-01",
+   "end": "2026-06-29"
+  },
+  {
+   "sym": "sh600193",
+   "name": "退市创兴",
+   "delist_date": "2026-07-06",
+   "source": "baostock",
+   "status": "added",
+   "rows": 1202,
+   "start": "2021-06-01",
+   "end": "2026-06-29"
+  },
+  {
+   "sym": "sz300029",
+   "name": "天龙退",
+   "delist_date": "2026-07-10",
+   "source": "baostock",
+   "status": "added",
+   "rows": 1204,
+   "start": "2021-06-01",
+   "end": "2026-07-09"
+  },
+  {
+   "sym": "sz000004",
+   "name": "国华退",
+   "delist_date": "2026-07-14",
+   "source": "baostock",
+   "status": "added",
+   "rows": 1201,
+   "start": "2021-06-01",
+   "end": "2026-07-13"
+  },
+  {
+   "sym": "sz002808",
+   "name": "恒久退",
+   "delist_date": "2026-07-14",
+   "source": "baostock",
+   "status": "added",
+   "rows": 1205,
+   "start": "2021-06-01",
+   "end": "2026-07-13"
+  },
+  {
+   "sym": "sz002898",
+   "name": "赛隆退",
+   "delist_date": "2026-07-17",
+   "source": "baostock",
+   "status": "added",
+   "rows": 1206,
+   "start": "2021-06-01",
+   "end": "2026-07-16"
+  }
+ ]
+}

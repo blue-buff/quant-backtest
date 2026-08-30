@@ -1,0 +1,45 @@
+# ── Python ──────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# ── 运行产物（每次实验重新生成，不进 git）─────────────────────────────
+results/
+cache/
+mlruns/
+mlflow-server/
+mlflow.db
+notify/
+
+# ── 数据（体积大，可由 scripts/update_tail.py 重新拉取）───────────────
+qlib_data_src*/
+bundle/
+.rqalpha/
+data/extra/*.parquet
+
+# ── 日志与临时文件 ─────────────────────────────────────────────────────
+*.log
+*.pkl
+*.json.tmp
+fetch_sina.log
+fetch_sina.err
+
+# ── 密钥与凭据（绝不上传）──────────────────────────────────────────────
+.qlab_github_token
+.env
+.env.*
+
+# ── IDE / OS ───────────────────────────────────────────────────────────
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# ── DSH harness 运行时 ────────────────────────────────────────────────
+.dsh/
+scripts/_*
+

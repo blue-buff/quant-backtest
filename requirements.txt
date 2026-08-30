@@ -1,0 +1,15 @@
+# 核心依赖（Python 3.12）
+pyqlib>=0.9.7          # ML 因子选股框架（含 lightgbm 依赖）
+rqalpha>=6.3.0         # 真实规则回测引擎（T+1/涨跌停/印花税）
+baostock               # A股日线数据源（免费无需注册）
+backtesting>=0.6.0     # 轻量回测框架
+pandas>=2.0
+numpy
+pyyaml
+scikit-learn
+mlflow                 # qlib 实验记录（本地文件存储）
+typer                  # qbt CLI 框架
+rich                   # qbt 终端输出
+
+# 测试（OPTIMIZATION.md C2）
+pytest
