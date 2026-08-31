@@ -34,7 +34,7 @@ Data sync paths (P8 6.4, validated 2026-08-23):
 - executor requirements venvs: QLAB_VENV_DIR=<workdir>/executor_venvs, persistent;
   remote pip uses the tuna PyPI mirror (~/.config/pip/pip.conf).
 """
-import hashlib, json, os, re, shutil, subprocess, sys, time
+import hashlib, json, os, re, shlex, shutil, subprocess, sys, time
 from pathlib import Path
 
 from . import QLAB_ROOT
@@ -75,7 +75,13 @@ def configured():
 def _ssh_cmd(cfg):
     cmd = ["ssh"] + _ssh_opts()
     if cfg["jump"]:
-        cmd += ["-J", cfg["jump"]]
+        # OpenSSH does not reliably propagate -i into the ProxyJump child.
+        # Build an explicit ProxyCommand so the jump host uses the same key.
+        key = os.environ.get("QLAB_SPARK_SSH_KEY", "").strip()
+        auth = "-i " + shlex.quote(key) + " " if key else ""
+        proxy = ("ssh " + auth + "-o BatchMode=yes -o StrictHostKeyChecking=accept-new "
+                 "-W %h:%p " + cfg["jump"])
+        cmd += ["-o", "ProxyCommand=" + proxy]
     cmd += ["-p", cfg["port"], cfg["ssh"]]
     return cmd
 
