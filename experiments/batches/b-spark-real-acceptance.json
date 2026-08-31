@@ -1,0 +1,8 @@
+{
+  "batch_id": "b-spark-real-acceptance",
+  "note": "Single real hs300 LightGBM train task for Spark end-to-end acceptance.",
+  "timeout_min": 30,
+  "specs": [
+    "experiments/specs/spark_real_hs300_1m_lgb.json"
+  ]
+}
