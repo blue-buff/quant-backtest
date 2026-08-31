@@ -41,8 +41,14 @@ from . import QLAB_ROOT
 
 PACK_DIR = QLAB_ROOT / "results" / "remote_pack"
 
-_SSH_OPTS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=15",
-             "-o", "StrictHostKeyChecking=accept-new"]
+def _ssh_opts():
+    """Common ssh options; optional key applies to both target and ProxyJump."""
+    opts = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=15",
+            "-o", "StrictHostKeyChecking=accept-new"]
+    key = os.environ.get("QLAB_SPARK_SSH_KEY", "").strip()
+    if key:
+        opts += ["-i", key]
+    return opts
 
 # Each job gets its OWN remote working dir (workdir/jobs/job_<id>/repo); the
 # shared feature/price cache lives in workdir/cache and is symlinked in, so
@@ -67,7 +73,7 @@ def configured():
 
 
 def _ssh_cmd(cfg):
-    cmd = ["ssh"] + _SSH_OPTS
+    cmd = ["ssh"] + _ssh_opts()
     if cfg["jump"]:
         cmd += ["-J", cfg["jump"]]
     cmd += ["-p", cfg["port"], cfg["ssh"]]
@@ -101,7 +107,7 @@ def _ssh(cfg, cmd, timeout):
 
 
 def _scp(cfg, src, dst):
-    cmd = ["scp"] + _SSH_OPTS
+    cmd = ["scp"] + _ssh_opts()
     if cfg["jump"]:
         cmd += ["-J", cfg["jump"]]
     cmd += ["-P", cfg["port"], src, dst]

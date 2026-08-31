@@ -76,3 +76,12 @@ def test_dispatch_failure_pulls_scene_back(monkeypatch, tmp_path):
     assert "preserved at results/remote_fail/" in out["reason"]  # 现场保回
     assert "(remote job dir kept: /home/dev/quant/jobs/job_8)" in out["reason"]
     assert any("fail_e_y_" in c[0] for c in scp_calls)  # 失败现场 scp 回来
+
+
+def test_ssh_key_applies_to_target_and_jump(monkeypatch):
+    monkeypatch.setenv("QLAB_SPARK_SSH_KEY", "/tmp/test_key")
+    monkeypatch.setenv("QLAB_SPARK_JUMP", "j@j")
+    cfg = remote.spark_config()
+    cmd = remote._ssh_cmd(cfg)
+    assert "-J" in cmd
+    assert cmd[cmd.index("-i") + 1] == "/tmp/test_key"
