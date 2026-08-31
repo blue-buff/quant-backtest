@@ -77,7 +77,8 @@ def _ssh_cmd(cfg):
     if cfg["jump"]:
         # OpenSSH does not reliably propagate -i into the ProxyJump child.
         # Build an explicit ProxyCommand so the jump host uses the same key.
-        key = os.environ.get("QLAB_SPARK_SSH_KEY", "").strip()
+        key = (os.environ.get("QLAB_SPARK_JUMP_KEY", "")
+               or os.environ.get("QLAB_SPARK_SSH_KEY", "")).strip()
         auth = "-i " + shlex.quote(key) + " " if key else ""
         proxy = ("ssh " + auth + "-o BatchMode=yes -o StrictHostKeyChecking=accept-new "
                  "-W %h:%p " + cfg["jump"])

@@ -84,4 +84,12 @@ def test_ssh_key_applies_to_target_and_jump(monkeypatch):
     cfg = remote.spark_config()
     cmd = remote._ssh_cmd(cfg)
     assert any("ProxyCommand=ssh -i /tmp/test_key" in x for x in cmd)
-    assert cmd[cmd.index("-i") + 1] == "/tmp/test_key"
+
+
+def test_jump_key_can_differ_from_target_key(monkeypatch):
+    monkeypatch.setenv("QLAB_SPARK_SSH_KEY", "/tmp/target_key")
+    monkeypatch.setenv("QLAB_SPARK_JUMP_KEY", "/tmp/jump_key")
+    monkeypatch.setenv("QLAB_SPARK_JUMP", "j@j")
+    cmd = remote._ssh_cmd(remote.spark_config())
+    assert cmd[cmd.index("-i") + 1] == "/tmp/target_key"
+    assert any("ProxyCommand=ssh -i /tmp/jump_key" in x for x in cmd)
