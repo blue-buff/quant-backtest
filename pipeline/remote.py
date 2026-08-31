@@ -116,7 +116,13 @@ def _ssh(cfg, cmd, timeout):
 def _scp(cfg, src, dst):
     cmd = ["scp"] + _ssh_opts()
     if cfg["jump"]:
-        cmd += ["-J", cfg["jump"]]
+        # scp does not understand -J; use the same explicit ProxyCommand as ssh.
+        key = (os.environ.get("QLAB_SPARK_JUMP_KEY", "")
+               or os.environ.get("QLAB_SPARK_SSH_KEY", "")).strip()
+        auth = "-i " + shlex.quote(key) + " " if key else ""
+        proxy = ("ssh " + auth + "-o BatchMode=yes -o StrictHostKeyChecking=accept-new "
+                 "-W %h:%p " + cfg["jump"])
+        cmd += ["-o", "ProxyCommand=" + proxy]
     cmd += ["-P", cfg["port"], src, dst]
     return subprocess.run(cmd, capture_output=True, text=True, timeout=600)
 
