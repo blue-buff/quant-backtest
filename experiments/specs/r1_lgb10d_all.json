@@ -1,0 +1,13 @@
+{
+  "exp_id": "r1_lgb10d_all",
+  "base": "ref:all10d_ens3",
+  "overrides": {},
+  "params": {"top_k": 50, "invest_frac": 0.95, "buffer": 0.005},
+  "action": {"kind": "train", "executor": "executors/_example_topk_portfolio",
+             "test_start": "2025-01-01", "test_end": "2026-08-20"},
+  "metrics": ["rankic", "bootstrap", "portfolio", "backtest", "attribution"],
+  "changes": "R1 全市场GBDT集成: all + 10d标签 + 3种子LGBM(官方num_leaves210) rank_mean + topk50等权, 基准=等权全体持仓; 后续post-hoc映射hs300比sh000300",
+  "expectation": {"rankic_mean_min": 0.05, "p_le0_max": 0.05},
+  "timeout_min": 720,
+  "runner": "spark"
+}

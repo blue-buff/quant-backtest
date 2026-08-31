@@ -1,0 +1,21 @@
+{
+  "window": "roll10_hs300_w00",
+  "fit_end": "2024-06-30",
+  "test": [
+    "2024-09-30",
+    "2024-12-30"
+  ],
+  "ok": true,
+  "seconds": 80.5,
+  "metrics": {
+    "IC": 0.05356458590592712,
+    "ICIR": 0.3441871799193779,
+    "Rank IC": 0.0880086739936256,
+    "Rank ICIR": 0.5378233157955766,
+    "l2.train": 0.8916577140486522,
+    "l2.valid": 1.0145789117397805
+  },
+  "run_id": "db22178ee8c04e24bc4d062f578ec1d8",
+  "pred": "qlib_examples/mlruns/778407001467074117/db22178ee8c04e24bc4d062f578ec1d8/artifacts/pred.pkl",
+  "label": "qlib_examples/mlruns/778407001467074117/db22178ee8c04e24bc4d062f578ec1d8/artifacts/label.pkl"
+}

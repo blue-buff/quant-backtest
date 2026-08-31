@@ -1,0 +1,22 @@
+{
+  "exp_id": "local_smoke_hs300",
+  "base": {
+    "universe": "hs300",
+    "dataset": {
+      "handler": {
+        "class": "Alpha158",
+        "instruments": "csi300"
+      }
+    },
+    "label": {
+      "horizon": 10,
+      "formula": "Ref($close,-11)/Ref($close,-1)-1"
+    }
+  },
+  "action": {
+    "kind": "smoke"
+  },
+  "runner": "local",
+  "changes": "本机(macOS) 全链路冒烟：队列→harness→台账，无数据无训练（smoke 行）",
+  "timeout_min": 30
+}

@@ -1,0 +1,21 @@
+{
+  "window": "roll10c_zz500_w03",
+  "fit_end": "2025-12-31",
+  "test": [
+    "2026-03-31",
+    "2026-06-30"
+  ],
+  "ok": true,
+  "seconds": 153.6,
+  "metrics": {
+    "IC": -0.007057993913651956,
+    "ICIR": -0.10576588207905908,
+    "Rank IC": 0.013189072400504846,
+    "Rank ICIR": 0.1780408887358337,
+    "l2.train": 0.936697183888054,
+    "l2.valid": 1.007331774269647
+  },
+  "run_id": "e13002db80fe4efaa4e8c972f60661f0",
+  "pred": "qlib_examples/mlruns/311214743234791162/e13002db80fe4efaa4e8c972f60661f0/artifacts/pred.pkl",
+  "label": "qlib_examples/mlruns/311214743234791162/e13002db80fe4efaa4e8c972f60661f0/artifacts/label.pkl"
+}

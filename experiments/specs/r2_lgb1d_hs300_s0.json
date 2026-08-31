@@ -1,0 +1,19 @@
+{
+  "exp_id": "r2_lgb1d_hs300_s0",
+  "base": "ref:all10d_ens3",
+  "overrides": {
+    "universe": "hs300",
+    "dataset": {"handler": {"instruments": "csi300"}},
+    "label": {"horizon": 1, "formula": "Ref($close,-2)/Ref($close,-1)-1", "shift": -2},
+    "seeds": [0]
+  },
+  "params": {"top_k": 50, "invest_frac": 0.95, "buffer": 0.005},
+  "action": {"kind": "train", "executor": "executors/_example_topk_portfolio",
+             "test_start": "2025-01-01", "test_end": "2026-08-20",
+             "num_threads": 20},
+  "metrics": ["rankic", "bootstrap", "portfolio", "backtest", "attribution"],
+  "changes": "诊断: 单种子0 + num_threads=8, 对照qb_lgb_a158(qlib LGBModel, seed0, threads20, rankic0.0234)定位executor弱化根因",
+  "expectation": {"rankic_mean_min": 0.01, "p_le0_max": 0.2},
+  "timeout_min": 60,
+  "runner": "local"
+}

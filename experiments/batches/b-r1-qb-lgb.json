@@ -1,0 +1,7 @@
+{
+  "batch_id": "b-r1-qb-lgb",
+  "timeout_min": 240,
+  "specs": [
+    "experiments/specs/r1_qb_lgb10d_all.json"
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "exp_id": "kronos_hs300_30d",
+  "base": {
+    "universe": "hs300",
+    "label": {"horizon": 1},
+    "dataset": {
+      "handler": {
+        "class": "Alpha158",
+        "fit_start_time": "2021-06-01",
+        "fit_end_time": "2024-06-30"
+      }
+    }
+  },
+  "action": {
+    "kind": "train",
+    "executor": "executors/kronos",
+    "test_start": "2025-01-01",
+    "test_end": "2025-02-14"
+  },
+  "params": {
+    "lookback": 120,
+    "max_context": 512,
+    "min_history": 60,
+    "temperature": 1.0,
+    "top_p": 0.9,
+    "sample_count": 1,
+    "seed": 42,
+    "torch_threads": 4,
+    "max_dates": 0,
+    "topk": 50,
+    "n_drop": 5
+  },
+  "metrics": ["rankic", "bootstrap", "deciles", "quarters", "hit", "portfolio", "backtest", "attribution"],
+  "runner": "spark",
+  "timeout_min": 300,
+  "changes": "Kronos 正式部署测试: hs300 全池 300 只, lookback 120, test 2025-01-01..2025-02-14 (~30 截面, CPU 实测 ~7min/天); extra 特征 kronos_ohlcv; exploratory 无 expectation, 30 截面 IC 样本薄. 交易层接入: 信号->交易持仓 (qlib TopkDropoutStrategy 语义, topK=50/n_drop=5 等权 1/topk), 新增 portfolio/backtest/attribution 三族指标"
+}
+

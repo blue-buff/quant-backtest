@@ -1,0 +1,12 @@
+{
+ "exp_id": "p8_torch_gpu_hs300_10d",
+ "base": "ref:all10d_ens3",
+ "overrides": {"universe": "hs300", "seeds": [42],
+               "dataset": {"handler": {"instruments": "csi300"}}},
+ "params": {"hidden": 64, "epochs": 10, "lr": 0.001, "patience": 3},
+ "action": {"kind": "train", "executor": "executors/_torch_mlp",
+            "test_start": "2025-01-01", "test_end": "2026-08-20"},
+ "changes": "P8 GPU 任务：torch 2.10.0+cu128 精确钉版（前一版未钉 +cu128 被 PyPI 镜像的 CPU 轮子截胡，p8_torch_hs300_10d 记录在案），在 GB10 上跑 GPU 训练",
+ "timeout_min": 60,
+ "runner": "spark"
+}

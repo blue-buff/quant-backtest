@@ -1,0 +1,9 @@
+{
+  "batch_id": "b-r2-label-sweep",
+  "timeout_min": 90,
+  "specs": [
+    "experiments/specs/r2_lgb10d_hs300.json",
+    "experiments/specs/r2_lgb15d_hs300.json",
+    "experiments/specs/r2_lgb20d_hs300.json"
+  ]
+}

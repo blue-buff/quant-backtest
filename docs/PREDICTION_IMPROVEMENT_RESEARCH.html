@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>提高模型预测能力的可操作方法 — 调研报告</title>
+<style>
+body{font-family:-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;max-width:1000px;margin:0 auto;padding:24px 32px 80px;line-height:1.75;color:#24292f;background:#fff}
+h1{font-size:1.9em;border-bottom:2px solid #0969da;padding-bottom:8px}
+h2{font-size:1.4em;border-bottom:1px solid #d0d7de;padding-bottom:4px;margin-top:36px}
+h3{font-size:1.15em;margin-top:26px}
+table{border-collapse:collapse;margin:14px 0;width:100%;font-size:.92em}
+th,td{border:1px solid #d0d7de;padding:6px 10px;text-align:left}
+th{background:#f6f8fa}
+tr:nth-child(even){background:#fafbfc}
+blockquote{border-left:4px solid #0969da;margin:12px 0;padding:4px 16px;background:#f6f8fa;color:#57606a}
+code{background:#f6f8fa;border-radius:4px;padding:1px 5px;font-family:Consolas,monospace;font-size:.9em}
+a{color:#0969da;text-decoration:none}
+a:hover{text-decoration:underline}
+hr{border:none;border-top:1px solid #d0d7de;margin:28px 0}
+strong{color:#0a2540}
+</style></head><body>
+<h1 id="_1">提高模型预测能力的可操作方法 —— 深度调研报告</h1>
+<blockquote>
+<p>调研对象：本项目的技术栈（qlib 0.9.7 + LightGBM + Alpha158，A 股日频，沪深300 池）
+调研方式：网络深度调研（微软 qlib 官方源码与 benchmark、LightGBM 官方文档、国金/华泰/西南证券研报、量化工程长文、IC 方法论资料），所有结论均附来源链接
+日期：2026-08-20 ｜ 基线提交：e4df9c8</p>
+</blockquote>
+<hr />
+<h2 id="0-tldr">0. 结论先行（TL;DR）</h2>
+<p>当前模型 <strong>RankIC ≈ 0.014、IC ≈ -0.007</strong>，处于"噪声"区间（IC &lt; 0.01 即噪声，见 <a href="#参考来源">paperswithbacktest IC 判定表</a>）。对照 qlib 官方 benchmark，<strong>LightGBM + Alpha158 + 沪深300 的官方成绩是 IC 0.0448 / RankIC 0.0469 / ICIR 0.366</strong>（20 次运行均值，<a href="#参考来源">qlib benchmarks README</a>）。差距主要不是"算法不行"，而是五个可修复的结构性原因：</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>差距</th>
+<th>我们现状</th>
+<th>官方 benchmark</th>
+<th>修复成本</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>训练窗口</td>
+<td>18 个月（2023-01~2024-06）</td>
+<td><strong>7 年</strong>（2008-2014 训练、2015-16 验证、2017-20 测试）</td>
+<td>低（数据前移重拉）</td>
+</tr>
+<tr>
+<td>2</td>
+<td>标签-调仓错配</td>
+<td>标签=未来 1 日收益，调仓=月度</td>
+<td>标签 1 日、日频滚动调仓（topk50 每日微调）</td>
+<td>低（改标签实验）</td>
+</tr>
+<tr>
+<td>3</td>
+<td>预处理</td>
+<td>RobustZScoreNorm（MAD 去极值+标准化，特征与标签全部处理）</td>
+<td>官方默认：<strong>CSZScoreNorm 只作用于标签</strong> + DropnaLabel（<a href="#参考来源">handler.py 源码</a>）</td>
+<td>低（改 yaml A/B）</td>
+</tr>
+<tr>
+<td>4</td>
+<td>训练方式</td>
+<td>一次性训练</td>
+<td>多 seed 20 次取均值（std≈0 说明稳定）</td>
+<td>低（集成）</td>
+</tr>
+<tr>
+<td>5</td>
+<td>样本量</td>
+<td>300 股 × 18 个月 ≈ 13.5 万行</td>
+<td>300 股 × 7 年（官方）；全 A 训练是券商标配（5000+ 股）</td>
+<td>中（全市场数据）</td>
+</tr>
+</tbody>
+</table>
+<p><strong>行动优先级</strong>（详见第 2 节）：数据前移 → 预处理 A/B → 标签实验 → 滚动重训 → 多种子集成 → 中性化 → 排序学习。按此顺序，把 <strong>RankIC 从 0.014 提到 0.03~0.04、ICIR 提到 0.3 以上</strong>是现实目标；这是官方数据在"旧时段+长窗口"下的水平，2023-2026 这段近期行情下不应期望更高。</p>
+<p><strong>诚实声明</strong>：本报告所有建议是"提高预测能力"的方法，不等于"提高收益"。策略收益中 beta（市场涨跌）占比很大（我们总收益 +18.82% 而超额仅 +2.22%），alpha 提升是渐进过程；任何声称 IC &gt; 0.1 的结果在宽流动性股票池上都应怀疑数据泄漏或过拟合（<a href="#参考来源">microalphas</a>）。</p>
+<hr />
+<h2 id="1">1. 现状基线（与官方对照）</h2>
+<h3 id="11-e4df9c8">1.1 我们的最新基线（提交 e4df9c8 后）</h3>
+<table>
+<thead>
+<tr>
+<th>层</th>
+<th>指标</th>
+<th>数值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>模型信号</td>
+<td>IC / ICIR</td>
+<td><strong>-0.0065 / -0.041</strong></td>
+</tr>
+<tr>
+<td>模型信号</td>
+<td>RankIC / RankICIR</td>
+<td><strong>+0.0136 / +0.085</strong></td>
+</tr>
+<tr>
+<td>qlib 简化层（top50 日频，无成本）</td>
+<td>年化超额 / IR</td>
+<td>+2.58% / 0.25</td>
+</tr>
+<tr>
+<td>qlib 简化层（含成本）</td>
+<td>年化超额 / IR</td>
+<td>-2.21% / -0.21</td>
+</tr>
+<tr>
+<td>rqalpha 真实规则层（月度调仓）</td>
+<td>总收益 / Sharpe</td>
+<td>+18.82% / 0.87</td>
+</tr>
+<tr>
+<td>rqalpha 真实规则层</td>
+<td>官方基准 / 超额</td>
+<td>+16.60% / <strong>+2.22%</strong></td>
+</tr>
+</tbody>
+</table>
+<p>关键事实：
+- 训练段 2023-01-01 ~ 2024-06-30（<strong>18 个月</strong>），验证 2024H2，测试 2025-01 ~ 2026-08（20 个月）
+- 超参与官方 benchmark 完全一致（num_leaves=210、lr=0.2、max_depth=8、colsample=0.8879、subsample=0.8789、L1=205.7、L2=581.0）
+- 预处理为 DropnaLabel + RobustZScoreNorm + DropnaProcessor（<strong>这是我们与官方唯一的预处理差异之一</strong>，改动后 IC 从 +0.0013 变为 -0.0065，实测为负）</p>
+<h3 id="12-qlib-benchmark">1.2 qlib 官方 benchmark（同一算法、同一池、官方数据）</h3>
+<p>来源：<a href="https://github.com/microsoft/qlib/blob/main/examples/benchmarks/README.md">microsoft/qlib examples/benchmarks/README.md</a>（20 次运行均值±std）</p>
+<p><strong>CSI300 / Alpha158</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>IC</th>
+<th>ICIR</th>
+<th>Rank IC</th>
+<th>Rank ICIR</th>
+<th>年化收益</th>
+<th>IR</th>
+<th>最大回撤</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>LightGBM</td>
+<td><strong>0.0448</strong></td>
+<td><strong>0.3660</strong></td>
+<td><strong>0.0469</strong></td>
+<td><strong>0.3877</strong></td>
+<td><strong>9.01%</strong></td>
+<td><strong>1.0164</strong></td>
+<td>-10.38%</td>
+</tr>
+<tr>
+<td>Linear</td>
+<td>0.0397</td>
+<td>0.3000</td>
+<td>0.0472</td>
+<td>0.3531</td>
+<td>6.92%</td>
+<td>0.9209</td>
+<td>-15.09%</td>
+</tr>
+<tr>
+<td>XGBoost</td>
+<td>0.0498</td>
+<td>0.3779</td>
+<td>0.0505</td>
+<td>0.4131</td>
+<td>7.80%</td>
+<td>0.9070</td>
+<td>-11.68%</td>
+</tr>
+<tr>
+<td>CatBoost</td>
+<td>0.0481</td>
+<td>0.3366</td>
+<td>0.0454</td>
+<td>0.3311</td>
+<td>7.65%</td>
+<td>0.8032</td>
+<td>-10.92%</td>
+</tr>
+<tr>
+<td>DoubleEnsemble(基模型LGBM)</td>
+<td>0.0521</td>
+<td>0.4223</td>
+<td>0.0502</td>
+<td>0.4117</td>
+<td>11.58%</td>
+<td>1.3432</td>
+<td>-9.20%</td>
+</tr>
+<tr>
+<td>LSTM(选20特征)</td>
+<td>0.0318</td>
+<td>0.2367</td>
+<td>0.0435</td>
+<td>0.3389</td>
+<td>3.81%</td>
+<td>0.5561</td>
+<td>-12.07%</td>
+</tr>
+<tr>
+<td>GRU(选20特征)</td>
+<td>0.0315</td>
+<td>0.2450</td>
+<td>0.0428</td>
+<td>0.3440</td>
+<td>3.44%</td>
+<td>0.5160</td>
+<td>-10.17%</td>
+</tr>
+</tbody>
+</table>
+<p><strong>CSI500 / Alpha158</strong>：LightGBM IC 0.0399 / ICIR 0.4065 / RankIC 0.0482 / RankICIR 0.5101 / 年化 12.84% / IR 1.565。</p>
+<p><strong>结论</strong>：① LightGBM 在官方数据上强于 Linear 但差距不大（IC 0.0448 vs 0.0397）——非线性收益有限，说明"特征工程+标签+训练协议"比模型选择更值钱；② 深度模型（LSTM/GRU）在官方数据上<strong>不如</strong> LightGBM，不需要急着上深度学习；③ 官方训练窗口 7 年是我们 18 个月的 4.7 倍——<strong>这是最值得先补的短板</strong>。</p>
+<h3 id="13-ic">1.3 IC 多少算"能用"（判定标准）</h3>
+<table>
+<thead>
+<tr>
+<th>IC 区间</th>
+<th>判定</th>
+<th>策略含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>&gt; 0.10</td>
+<td>罕见，先怀疑数据错误/泄漏</td>
+<td>强独立信号</td>
+</tr>
+<tr>
+<td>0.05 ~ 0.10</td>
+<td>很好</td>
+<td>核心 alpha 信号</td>
+</tr>
+<tr>
+<td>0.02 ~ 0.05</td>
+<td>好</td>
+<td>多信号合成有用</td>
+</tr>
+<tr>
+<td>0.01 ~ 0.02</td>
+<td>边缘</td>
+<td>只有高广度才值得交易</td>
+</tr>
+<tr>
+<td>&lt; 0.01</td>
+<td><strong>噪声</strong></td>
+<td>不值得交易</td>
+</tr>
+</tbody>
+</table>
+<p>来源：<a href="https://github.com/paperswithbacktest/wiki/blob/main/information-coefficient-signal-quality/page.md">paperswithbacktest/wiki IC 页</a>、<a href="https://microalphas.com/information-coefficient/">microalphas.com IC 指南</a>。
+补充（microalphas）：0.02~0.07 是"有意义的"区间；<strong>RankIC 是行业默认口径</strong>（对异常值稳健）；ICIR = mean(IC)/std(IC)，<strong>ICIR &gt; 0.5 才算稳定</strong>，年化 ×√252（日频）或 ×√12（月频）；IC 随预测周期自然衰减，要画 1/5/10/20 日的衰减曲线决定调仓频率；Grinold-Kahn 基本定律 IR ≈ IC×√BR——广度（独立下注数）与 IC 互补，加 100 只不相关股票的效果远大于把单票预测磨到小数点后四位。</p>
+<hr />
+<h2 id="2">2. 可操作方法（按 影响 × 成本 排序）</h2>
+<h3 id="p0-13">P0 快赢（每个 1~3 天，先做这些）</h3>
+<h4 id="p0-1-18-3">P0-1 ★★★ 数据窗口前移：训练数据从 18 个月拉到 3 年+</h4>
+<ul>
+<li><strong>做什么</strong>：把新浪数据拉取起点从 2023-01-01 改到 <strong>2022-01-01</strong>（或 2021-06-01），重跑 fetch → dump → train。Alpha158 有大量 60 日滚动窗口特征，当前训练集前 ~2 个月被 Dropna 丢弃（正是审计报告建议 E）；且 18 个月训练样本几乎一定会过拟合到当期市场风格。</li>
+<li><strong>怎么做</strong>：<code>qlib_scripts/fetch_sina.py</code> 顶部 <code>START, END = "2023-01-01", ...</code> 改为 <code>"2022-01-01"</code>（或加 <code>--start</code> 参数）；重跑 <code>qbt all --pool hs300 --model lgb</code>。</li>
+<li><strong>证据</strong>：</li>
+<li>官方 benchmark 训练 2008-2014（<strong>7 年</strong>），<a href="https://github.com/microsoft/qlib/blob/main/examples/benchmarks/LightGBM/workflow_config_lightgbm_Alpha158.yaml">官方 yaml</a></li>
+<li><a href="https://quant67.com/post/quant/12-ml-alpha/12-ml-alpha.html">quant67《机器学习选股》</a> 坑十一："用 1~2 年数据训练几乎一定会过拟合到当期市场风格，A 股选股训练集底线是 5 年，10 年更稳"</li>
+<li><strong>预期</strong>：训练样本 ×2.5；warmup 问题消失；RankIC 有望从 0.014 回到 0.02+ 量级（前提：2022 年熊市样本不会把模型带偏——这正是要做的"时段稳健性"检验）。</li>
+<li><strong>风险</strong>：2022 年行情特征与 2025-26 差异大，滚动验证（P0-4）是配套手段。</li>
+</ul>
+<h4 id="p0-2-ab-cszscorenorm-robustzscorenorm">P0-2 ★★★ 预处理 A/B：恢复官方默认的"标签 CSZScoreNorm"，与 RobustZScoreNorm 对照</h4>
+<ul>
+<li><strong>做什么</strong>：官方 Alpha158 默认 learn_processors 是 <code>[DropnaLabel, CSZScoreNorm(fields_group="label")]</code>（<a href="https://github.com/microsoft/qlib/blob/main/qlib/contrib/data/handler.py">handler.py 源码</a>），即<strong>只对标签做截面 z-score，特征不动</strong>（官方 infer 用 ZScoreNorm+Fillna）。我们改成 RobustZScoreNorm 后，<strong>IC 实测从 +0.0013 掉到 -0.0065</strong>。两种方案各跑一次测试期，按 RankIC/ICIR 定夺。</li>
+<li><strong>怎么做</strong>：复制 yaml 为 <code>lightgbm_alpha158_csz.yaml</code>，learn_processors 改回 <code>[DropnaLabel, CSZScoreNorm(fields_group: label), DropnaProcessor]</code>；infer_processors 用 <code>[ZScoreNorm, DropnaProcessor]</code>（与官方 infer 对齐）。用 mlflow 记录两个实验，对比测试期 RankIC/ICIR/超额。</li>
+<li><strong>证据</strong>：</li>
+<li>官方默认配置（源码级证据，非记忆）</li>
+<li><a href="https://stock.finance.sina.com.cn/stock/go.php/vReport_Show/kind/lastest/rptid/765007906021/index.phtml">国金证券《机器学习全流程重构》（2024-03-29）</a>：特征与标签的预处理方式对截面/时序模型影响不同，<strong>截面模型适合用整个训练集 ZScore 保留日期间相对大小</strong></li>
+<li>quant67 坑二/坑三：全局 z-score 或全局 fillna 会把未来信息融进训练数据（我们的 RobustZScoreNorm 拟合窗口是 fit 段，无泄漏问题，但 MAD 去极值可能把标签尾部信息压平）</li>
+<li><strong>预期</strong>：这是"回到官方默认"的低风险修正；如果 CSZScoreNorm 版 RankIC 反超，就永久切换并写进 README。</li>
+<li><strong>风险</strong>：无（A/B 留档即可）。</li>
+</ul>
+<h4 id="p0-3-151020-ic">P0-3 ★★★ 标签与调仓周期对齐：1/5/10/20 日标签实验 + IC 衰减曲线</h4>
+<ul>
+<li><strong>做什么</strong>：我们月度调仓，但标签是未来 1 日收益——<strong>预测周期与持有周期错配</strong>（信号在第 1 天就衰减完，剩下 19 天在裸奔）。做 {1,5,10,20} 四组标签（均用后复权价，如 20 日标签 = <code>Ref($close, -21)/Ref($close, -1) - 1</code>），画 IC/IR 随 horizon 的衰减曲线，按月频调仓的成本-收益取最优。</li>
+<li><strong>怎么做</strong>：yaml 的 handler kwargs 加 <code>label: ["Ref($close, -6)/Ref($close, -1) - 1"]</code>（5 日）等四组；训练后从 mlruns 读 IC 对比；同时输出各标签方案的换手率（rqalpha 报告已有）。</li>
+<li><strong>证据</strong>：</li>
+<li><a href="https://quant67.com/post/quant/12-ml-alpha/12-ml-alpha.html">quant67</a>："H=1 日标签噪声极大（单日收益信噪比 &lt;0.1）；A 股最常用 H=5；月度持仓用 H=20；经验法则先在 {5,10,20} 上各跑一次看 IC 衰减，挑衰减最慢的"</li>
+<li><a href="https://microalphas.com/information-coefficient/">microalphas</a>：horizon effect——IC 自然随周期衰减，衰减曲线决定最优调仓频率</li>
+<li>西南证券排序学习报告（见 P1-7）：月度/更长持仓下排序目标优于 1 日 MSE</li>
+<li><strong>预期</strong>：月频调仓下 10~20 日标签的 RankICIR 通常显著高于 1 日标签，且换手率大降（成本吃掉我们 4.8pct/年：无成本超额 +2.58% vs 含成本 -2.21%）。</li>
+<li><strong>风险</strong>：长标签的"等价独立样本"少一个数量级（quant67），需配合 P0-1 拉长数据。</li>
+</ul>
+<h4 id="p0-4-walk-forward">P0-4 ★★★ 滚动（walk-forward）重训：从"一次性训练"到"每季度重训"</h4>
+<ul>
+<li><strong>做什么</strong>：当前是一次性训练（2023-01~2024-06 训完就用 20 个月）。改为滚动：每次用"截至 T 的全部数据"训练，预测 T 之后一个月，T 步进一个月（或一季度），全程 walk-forward 回放。</li>
+<li><strong>怎么做</strong>：qlib 官方有现成参考——<a href="https://github.com/microsoft/qlib/blob/main/examples/model_rolling/task_manager_rolling.py">examples/model_rolling/task_manager_rolling.py</a>（RollingGen 生成滚动任务段）+ <a href="https://github.com/microsoft/qlib/blob/main/examples/online_srv/rolling_online_management.py">examples/online_srv/rolling_online_management.py</a>。qbt 层面：给 <code>train.py</code> 加 <code>--fit-end</code> 步进循环，或在 plan/backtest 前按窗口循环调用。</li>
+<li><strong>证据</strong>：</li>
+<li>qlib 官方 rolling 示例（源码）</li>
+<li><a href="https://stock.finance.sina.com.cn/stock/go.php/vReport_Show/kind/lastest/rptid/765007906021/index.phtml">国金证券</a>："一次性 vs 滚动 vs 扩展训练对比：选取合适的样本区间能使模型更能适应不同的市场环境"</li>
+<li><a href="https://quant67.com/post/quant/12-ml-alpha/12-ml-alpha.html">quant67</a>：重训练频率（周/月/季按策略周期），重训前做预测分布对齐校验</li>
+<li><strong>预期</strong>：消除"模型训练截止 2024-06 却预测到 2026-08"的时滞；2025-26 行情变化快，滚动训练通常带来实质 RankIC 提升。</li>
+<li><strong>风险</strong>：训练次数 ×12，LightGBM 分钟级训练可接受；注意每个滚动窗口都写独立 mlflow run（train.py 已支持 experiment_name 隔离）。</li>
+</ul>
+<h4 id="p0-5-510-seed">P0-5 ★★ 多种子集成：5~10 个 seed 平均预测</h4>
+<ul>
+<li><strong>做什么</strong>：同一 yaml 用不同随机种子（LightGBM 的 <code>seed</code>/<code>bagging_seed</code>/<code>feature_fraction_seed</code>）训练 5~10 个模型，预测取均值（或 rank 平均）再进 plan。</li>
+<li><strong>怎么做</strong>：train.py 加 <code>--seeds 5,13,42,77,123</code> 循环；plan 层读多 run 预测做 rank 平均（planlib 已有 lineage 机制，扩展成"多 run 平均"即可）。</li>
+<li><strong>证据</strong>：<a href="https://quant67.com/post/quant/12-ml-alpha/12-ml-alpha.html">quant67</a>"多种子集成：同一份代码同一份数据 5~10 个不同 seed 取预测均值，<strong>IC 提升 5%~15%</strong>，性价比最高"；qlib 官方表"20 次运行均值±std"正是这个做法（std≈0 说明稳定）。</li>
+<li><strong>预期</strong>：RankIC +0.005~0.01 量级的稳定提升；几乎零成本。</li>
+<li><strong>风险</strong>：无。</li>
+</ul>
+<h3 id="p1-12">P1 主力提升（每个 1~2 周）</h3>
+<h4 id="p1-6">P1-6 ★★★ 行业 + 市值中性化（补齐"风格剥离"）</h4>
+<ul>
+<li><strong>做什么</strong>：当前特征和标签都没有做行业/市值中性化，模型学到的大量"预测力"可能是风格暴露（大盘 vs 小盘、行业 beta）。做法：每个截面（每天）把特征（或预测/标签）对"申万一级行业哑变量 + log 市值"做 OLS 回归取残差。</li>
+<li><strong>怎么做</strong>：数据层需要补两张表——① 行业分类（akshare 有 <code>ak.stock_industry_category_cninfo</code> 或新浪行业，免费；注意用 <strong>PIT/时点分类</strong>，quant67 坑十四：行业分类会调整，训练不能用未来分类）；② 总市值 = close × 总股本（需股本快照数据，akshare 有，或 tushare pro 更规范）。然后 qlib 侧可用自定义 processor 或在特征集里加行业/市值特征让树自己学——<strong>但"中性化"要求显式回归取残差</strong>，建议在 dump 前加工成独立字段 + 一个 CSNeutralize 自定义 processor。</li>
+<li><strong>证据</strong>：</li>
+<li><a href="https://stock.finance.sina.com.cn/stock/go.php/vReport_Show/kind/lastest/rptid/635436933247/index.phtml">华泰人工智能系列之二十八（2020-02-19）</a>：合成因子做"行业、市值、20 日收益率、20 日波动率、20 日换手率"五因子中性化后 <strong>RankIC 8.87%、IC_IR 1.16</strong>，TOP 组合年化超额 9.65%、IR 3.08——中性化是 A 股因子工程基本动作</li>
+<li><a href="https://quant67.com/post/quant/12-ml-alpha/12-ml-alpha.html">quant67</a> 特征工程章节：行业市值中性公式与理由（风格暴露伪装因子有效性；GBDT 对条件期望偏差敏感）</li>
+<li>国金证券：全 A vs 成分股训练与基准相关（中性化后不同池的可比性更好）</li>
+<li><strong>预期</strong>：剥离风格后 RankIC 可能先降（暴露被去掉），但 ICIR/稳定性与样本外可复现性上升；叠加到组合层后超额更干净。</li>
+<li><strong>风险</strong>：行业/市值数据源新增（akshare 免费可拉）；PIT 处理要认真。</li>
+</ul>
+<h4 id="p1-7-lambdarank">P1-7 ★★★ 排序学习（LambdaRank）：把"回归收益率"改成"优化截面排序"</h4>
+<ul>
+<li><strong>做什么</strong>：LightGBM 原生支持 <code>objective: lambdarank</code>，以"每个交易日一个 group"训练，直接优化 NDCG@K（K=持仓数）。西南证券实证：<strong>相同因子库下，LambdaRank 比 MSE 回归夏普 +66%（1.86 vs 1.12）、换手率 -46%</strong>。</li>
+<li><strong>怎么做</strong>：qlib 的 <code>LGBModel</code>（qlib/contrib/model/gbdt.py）不原生支持 rank 目标（loss 参数映射的是回归/分类），需要写一个小的自定义模型包装（继承 LGBModel 重写 fit，group=每日截面；或直接用 <code>lgb.rank_train</code>/<code>lgb.train(objective='lambdarank')</code> 自行训练并把预测写成 qlib 信号）。标签用 10/20 日收益（与月频调仓对齐）；评估指标加 NDCG@10/50。</li>
+<li><strong>证据</strong>：<a href="https://cs.com.cn/qs/202512/t20251201_6526009.html">西南证券《基于排序学习的选股增强策略》（中证网 2025-12-01）</a>：LambdaRank vs MSE，夏普 1.86 vs 1.12（+66%），换手率 -46%；quant67"多分类 vs 二分类 vs 回归 vs 排序"表：工业界更常用"二分类+Top/Bottom 截取"与"Rank 回归"，LightGBM lambdarank 对截面排序优化很自然。</li>
+<li><strong>预期</strong>：对"月频选 Top50 多头"这类任务，这是<strong>目标函数层面的对齐</strong>，比调超参更本质。</li>
+<li><strong>风险</strong>：需少量自定义代码；qlib 生态外训练/推理一致性要自己保证（quant67 坑：特征顺序、预处理一致）。</li>
+</ul>
+<h4 id="p1-8-shap-158-top-2050">P1-8 ★★ 特征精选 + SHAP 归因：从 158 特征到 top 20~50</h4>
+<ul>
+<li><strong>做什么</strong>：先跑一版 LightGBM 特征重要性（gain），保留 top 20~50 再训练；同时用 SHAP 看每个特征对预测的贡献方向是否稳定（跨滚动窗口 top-10 一致性）。</li>
+<li><strong>怎么做</strong>：train.py 加 <code>--topk-features 50</code>（从已训练模型读 <code>model.feature_importance("gain")</code> 生成新 yaml 的 <code>FilterCol</code> processor 或直接建 Alpha158 子集）；SHAP 用 <code>shap.TreeExplainer</code>（容器已装 shap？未装则 pip install）。</li>
+<li><strong>证据</strong>：qlib 官方 benchmark 注记"LSTM/GRU 用的是 <strong>LightGBM 特征重要性选出的 20 个特征</strong>"（README 表格下方注）；quant67：因子相关性过高会让树在多个相关因子间随机切换分裂，解释性下降；坑四：IC 由中间分位贡献时 top/bottom 分位可能完全没超额——<strong>要同时看分层收益</strong>。</li>
+<li><strong>预期</strong>：噪声特征减少 → 过拟合下降 → 样本外 ICIR 提升；SHAP 让你知道模型到底在"看什么"（为后续因子研究提供方向）。</li>
+<li><strong>风险</strong>：特征选择本身是多重检验的一部分，必须只基于训练段做选择（禁止用测试段选特征）。</li>
+</ul>
+<h4 id="p1-9-dart">P1-9 ★★ 超参数与模型变体：DART、叶子数、早停、样本权重</h4>
+<ul>
+<li><strong>做什么</strong>（每个都做一次 A/B，只动一个变量）：</li>
+<li><code>boosting_type: dart</code>（DART = Dropout 的 GBDT）：国金实测 DART 超过 GBDT，缓解过拟合；</li>
+<li><code>num_leaves</code> 210 → 64~128，加 <code>min_child_samples: 200~500</code>：我们 13.5 万行训练样本、等价独立样本更少（quant67 估计 A 股 10 年面板等价独立样本仅 20~50 万），官方 210 叶子的配置是为 7 年数据准备的；LightGBM 官方调参指南明确 num_leaves 是复杂度主控、leaf-wise 容易过拟合；</li>
+<li>早停：确认 LGBModel 已用 valid 集早停（官方 LGBModel 默认支持 early stopping，检查 train.py 传入的 <code>early_stopping_rounds</code>）；</li>
+<li>样本权重：按 <code>|ret|</code> 或波动率倒数给样本加权（高波动期信号更强；de Prado uniqueness weight 降低重叠样本权重）——收益不确定，先小实验。</li>
+<li><strong>证据</strong>：<a href="https://stock.finance.sina.com.cn/stock/go.php/vReport_Show/kind/lastest/rptid/765007906021/index.phtml">国金证券</a>（DART&gt;GBDT）；<a href="https://lightgbm.readthedocs.io/en/latest/Parameters-Tuning.html">LightGBM Parameters Tuning 官方文档</a>（leaf-wise 过拟合、num_leaves/min_data_in_leaf）；<a href="https://quant67.com/post/quant/12-ml-alpha/12-ml-alpha.html">quant67</a>（参数建议 num_leaves 63/min_child_samples 200；样本权重；模型复杂度与等价样本量匹配表：10^5~10^6 → num_leaves 64~256）。</li>
+<li><strong>预期</strong>：DART 与更浅树在短窗口下通常更稳；样本权重可能小幅提升 IC 或无效，留档即可。</li>
+<li><strong>风险</strong>：超参搜索有"研究过拟合"风险（de Prado：尝试 N 个策略最优期望夏普被高估 σ√(2lnN)），<strong>每次实验前先写好假设，用滚动验证集评估，禁止反复在同一测试段上挑选</strong>。</li>
+</ul>
+<h4 id="p1-10">P1-10 ★★ 评估与检验体系落地（与"提升"配套的"证明"）</h4>
+<ul>
+<li><strong>做什么</strong>：把审计建议 F、G 落地到报告流水线：</li>
+<li><strong>分层单调性检验</strong>（F）：预测分 10 层，输出每层月度收益表 + 单调性（Spearman 分层收益 vs 层号）；alphalens 的思路，自实现即可（不用装 alphalens，30 行以内）；</li>
+<li><strong>IC bootstrap 置信区间</strong>（G）：<code>scripts/analysis_bootstrap.py</code> 已就绪，对测试期 RankIC 序列跑 10k 次 bootstrap，输出 95% CI 与 p 值；</li>
+<li><strong>IC 衰减曲线</strong>：1/5/10/20 日 horizon 的 IC 表（与 P0-3 共用）；</li>
+<li><strong>换手与成本敏感性</strong>：qbt.yaml 扫描 slippage {0, 0.1%, 0.3%} × participation {0.05, 0.2}，输出超额对成本的敏感度表。</li>
+<li><strong>证据</strong>：<a href="https://github.com/quantrocket-llc/alphalens">alphalens</a>（分位收益是因子检验标配）；quant67 坑四（IC 好但分位收益差是常见陷阱）；microalphas（ICIR、衰减、TC：多头约束下 TC 可能只有 0.4~0.6，实盘 IR = TC×IC×√BR）。</li>
+<li><strong>预期</strong>：让"提升"有统计依据，而不是看单个数字讲故事。</li>
+</ul>
+<h3 id="p2-1">P2 进阶（1 个月+，按需投入）</h3>
+<h4 id="p2-11-5000">P2-11 全市场训练（5000+ 股）再映射回组合</h4>
+<ul>
+<li>样本量 ×10~20（300 → 5000 股），GBDT 在 10^5~10^7 独立样本区间最稳（quant67 表）；国金：全 A vs 成分股与基准和模型特性相关，需要分情况测试；实现：新浪全市场日线批量拉取（约 5000 只 × 双接口，分片+断点续传，估计 1~2 天可拉完），dump 后训练池改全 A、回测池仍用 300/500。</li>
+<li>注意：全市场要处理 ST、停牌、上市 &lt; 60 日、退市（生存者偏差），我们的 ST 过滤/only_tradable 已具备（P0 修复），标签侧也要对齐（quant67：停牌/退市口径要与回测引擎一致）。</li>
+</ul>
+<h4 id="p2-12">P2-12 分钟/高频因子</h4>
+<ul>
+<li>光大证券"成交量占比"高频因子、华泰"全频段量价"系列：分钟数据能提供独立于日频的 alpha，但数据获取（akshare 分钟接口历史长度有限，tushare pro 需积分）与存储成本高。先做"选 20~50 只股票试点验证增量"再铺开。</li>
+</ul>
+<h4 id="p2-13-grulstmtransformer-on-top20">P2-13 深度模型（GRU/LSTM/Transformer on top20 特征）</h4>
+<ul>
+<li>官方数据上 LGBM（IC 0.0448）明显强于 LSTM（0.0318）/GRU（0.0315），<strong>不建议优先</strong>；若做，用官方 top20 特征方案，且必须有 purged/embargo 验证协议（quant67：神经网络对训练协议和正则化要求更高）。</li>
+</ul>
+<h4 id="p2-14">P2-14 另类数据（分析师预期、北向、融资融券、龙虎榜、舆情）</h4>
+<ul>
+<li>与量价因子相关性低，是组合层面最值钱的增量（华泰：GP 挖掘的因子能提供独立于传统因子的增量超额）。数据源：tushare pro（需申请 token 与积分）、akshare 部分免费接口。<strong>API Key 需求</strong>：若走 tushare，需要 <code>tushare pro token</code>（日线/股本/行业/分析师/北向接口，基础积分即可覆盖大部分）。</li>
+</ul>
+<hr />
+<h2 id="3-30">3. 30 天行动路线图</h2>
+<table>
+<thead>
+<tr>
+<th>周</th>
+<th>动作</th>
+<th>产出/验收</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>W1</td>
+<td>P0-1 数据前移重拉（2022-01 起）+ 全链路重跑；P0-5 多种子集成</td>
+<td>新基线报告：RankIC/ICIR/超额 vs 旧基线对比表</td>
+</tr>
+<tr>
+<td>W2</td>
+<td>P0-2 预处理 A/B；P0-3 标签 {1,5,10,20} 实验</td>
+<td>预处理决策 + IC 衰减曲线表，写入 docs</td>
+</tr>
+<tr>
+<td>W3</td>
+<td>P0-4 滚动重训（季度步进）；P1-10 分层单调性 + bootstrap 落地</td>
+<td>滚动验证 RankIC 序列图；报告新增 F/G 小节</td>
+</tr>
+<tr>
+<td>W4</td>
+<td>P1-6 行业/市值数据补全 + 中性化实验；或 P1-7 LambdaRank 原型</td>
+<td>中性化 vs 非中性化 A/B；或排序学习原型对照</td>
+</tr>
+</tbody>
+</table>
+<p><strong>纪律</strong>：每周只改一个变量；所有实验进 mlflow（train.py 已按 experiment_name 隔离）；报告页（docs/report.html）加"实验记录"表；连续 3 个实验无改进就回到上一版，避免在测试段上反复挑选。</p>
+<hr />
+<h2 id="4">4. 预期与诚实声明</h2>
+<ol>
+<li><strong>现实目标</strong>：RankIC 0.014 → 0.03~0.04、RankICIR 0.09 → 0.3+、月频调仓含成本超额 +2.22% → +5~8%/年。这需要 P0 五项全部落地；单项平均贡献 RankIC +0.003~0.01。</li>
+<li><strong>官方 0.0448 的语境</strong>：2008-2020 数据、7 年训练、日频调仓、无真实费用约束的简化层；我们的 2023-2026 近期数据 + 月度调仓 + 真实规则层，不能直接对标。若 2025-26 是风格剧烈切换期（微盘流动性危机、急涨急跌），同期 IC 普遍低于历史均值。</li>
+<li><strong>IC &gt; 0.1 要警惕</strong>：宽流动性股票池上稳定 IC &gt; 0.1 大概率是数据泄漏/未中性化风格暴露/过拟合（microalphas）。</li>
+<li><strong>收益 ≠ 预测力</strong>：当前总收益 +18.82% 主要是 beta（基准 +16.60%）。提升预测力后，超额的正贡献才会显现。</li>
+<li><strong>本报告所有建议均可在当前代码库落地</strong>（qbt 的 fetch/dump/train/plan/backtest/report 六步管线已具备 A/B 与 mlflow 留档基础），不需要换技术栈。</li>
+</ol>
+<hr />
+<h2 id="_2">参考来源</h2>
+<p><strong>官方/源码</strong>
+1. qlib benchmarks 结果表：https://github.com/microsoft/qlib/blob/main/examples/benchmarks/README.md
+2. qlib LightGBM Alpha158 官方 yaml（超参与分段）：https://github.com/microsoft/qlib/blob/main/examples/benchmarks/LightGBM/workflow_config_lightgbm_Alpha158.yaml
+3. qlib 滚动训练示例（RollingGen/TaskManager）：https://github.com/microsoft/qlib/blob/main/examples/model_rolling/task_manager_rolling.py
+4. qlib 在线滚动预测示例：https://github.com/microsoft/qlib/blob/main/examples/online_srv/rolling_online_management.py
+5. qlib Alpha158 源码（label=Ref($close,-2)/Ref($close,-1)-1，默认处理器 CSZScoreNorm(label)）：https://github.com/microsoft/qlib/blob/main/qlib/contrib/data/handler.py
+6. qlib processor 源码（CSZScoreNorm/CSRankNorm/RobustZScoreNorm）：https://github.com/microsoft/qlib/blob/main/qlib/data/dataset/processor.py
+7. LightGBM 调参官方文档：https://lightgbm.readthedocs.io/en/latest/Parameters-Tuning.html</p>
+<p><strong>方法论</strong>
+8. paperswithbacktest IC 判定与基本定律：https://github.com/paperswithbacktest/wiki/blob/main/information-coefficient-signal-quality/page.md
+9. microalphas IC 指南（RankIC/ICIR/衰减/TC）：https://microalphas.com/information-coefficient/
+10. quant67《机器学习选股：标签构造、防过拟合、SHAP 归因》：https://quant67.com/post/quant/12-ml-alpha/12-ml-alpha.html
+11. López de Prado, Advances in Financial Machine Learning (Wiley, 2018) —— 标签/样本权重/金融交叉验证/回测过拟合（Purged K-Fold、Embargo、CPCV、Deflated Sharpe 出处）
+12. Bailey, Borwein, López de Prado, Zhu, "Pseudo-Mathematics and Financial Charlatanism" (Notices of the AMS, 2014) —— 回测过拟合概率上界</p>
+<p><strong>券商研报</strong>
+13. 国金证券《ALPHA掘金系列之十：机器学习全流程重构》（2024-03-29，高智威/王小康）：https://stock.finance.sina.com.cn/stock/go.php/vReport_Show/kind/lastest/rptid/765007906021/index.phtml
+14. 华泰证券《人工智能系列之二十八：基于量价的人工智能选股体系概览》（2020-02-19，林晓明等）：https://stock.finance.sina.com.cn/stock/go.php/vReport_Show/kind/lastest/rptid/635436933247/index.phtml
+15. 西南证券《基于排序学习的选股增强策略》（中证网 2025-12-01）：https://cs.com.cn/qs/202512/t20251201_6526009.html
+16. 光大证券 多因子系列《见微知著：成交量占比高频因子》：https://mf.bigquant.com/wiki/doc/61etdmb4NI</p>
+<p><strong>工具</strong>
+17. alphalens（分层收益/分位单调性检验）：https://github.com/quantrocket-llc/alphalens
+18. akshare（行业/股本/北向等免费数据）：https://akshare.akfamily.xyz/</p></body></html>

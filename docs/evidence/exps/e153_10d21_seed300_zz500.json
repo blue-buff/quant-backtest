@@ -1,0 +1,49 @@
+{
+  "name": "e153_10d21_seed300_zz500",
+  "pool": "zz500",
+  "ts": "2026-08-20T15:29:28",
+  "git": "921634c",
+  "yaml": "qlib_examples/experiments/e153_10d21_seed300_zz500.yaml",
+  "ok": true,
+  "label": [
+    "Ref($close, -11)/Ref($close, -1) - 1"
+  ],
+  "model_kwargs": {
+    "loss": "mse",
+    "colsample_bytree": 0.8879,
+    "learning_rate": 0.2,
+    "subsample": 0.8789,
+    "lambda_l1": 205.6999,
+    "lambda_l2": 580.9768,
+    "max_depth": 8,
+    "num_leaves": 210,
+    "num_threads": 20,
+    "seed": 300,
+    "bagging_seed": 301,
+    "feature_fraction_seed": 302
+  },
+  "segments": {
+    "train": [
+      "2021-06-01",
+      "2024-06-30"
+    ],
+    "valid": [
+      "2024-07-01",
+      "2024-12-31"
+    ],
+    "test": [
+      "2025-01-01",
+      "2026-08-14"
+    ]
+  },
+  "train_l2": 0.9253391041383167,
+  "valid_l2": 1.0149198828931336,
+  "IC": 0.00853147690448123,
+  "ICIR": 0.06596604188465535,
+  "rank_IC": 0.033528777705177995,
+  "rank_ICIR": 0.28470233117827487,
+  "run_id": "2892843ebac6456bbdee483e1b0b68cd",
+  "seconds": 174.0,
+  "pred_path": "qlib_examples/mlruns/679091484457799915/2892843ebac6456bbdee483e1b0b68cd/artifacts/pred.pkl",
+  "label_pkl": "qlib_examples/mlruns/679091484457799915/2892843ebac6456bbdee483e1b0b68cd/artifacts/label.pkl"
+}

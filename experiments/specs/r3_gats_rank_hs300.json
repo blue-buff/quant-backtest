@@ -1,0 +1,110 @@
+{
+  "exp_id": "r3_gats_rank_hs300",
+  "base": "ref:qb_off",
+  "overrides": {
+    "dataset": {
+      "handler": {
+        "class": "Alpha158"
+      }
+    },
+    "processors": {
+      "learn": [
+        {
+          "class": "DropnaLabel"
+        },
+        {
+          "class": "CSRankNorm",
+          "kwargs": {
+            "fields_group": "label"
+          }
+        }
+      ],
+      "infer": [
+        {
+          "class": "FilterCol",
+          "kwargs": {
+            "fields_group": "feature",
+            "col_list": [
+              "RESI5",
+              "WVMA5",
+              "RSQR5",
+              "KLEN",
+              "RSQR10",
+              "CORR5",
+              "CORD5",
+              "CORR10",
+              "ROC60",
+              "RESI10",
+              "VSTD5",
+              "RSQR60",
+              "CORR60",
+              "WVMA60",
+              "STD5",
+              "RSQR20",
+              "CORD60",
+              "CORD10",
+              "CORR20",
+              "KLOW"
+            ]
+          }
+        },
+        {
+          "class": "RobustZScoreNorm",
+          "kwargs": {
+            "fields_group": "feature",
+            "clip_outlier": true
+          }
+        },
+        {
+          "class": "Fillna",
+          "kwargs": {
+            "fields_group": "feature"
+          }
+        }
+      ]
+    },
+    "model": {
+      "class": "GATs",
+      "module_path": "qlib.contrib.model.pytorch_gats_ts",
+      "kwargs": {
+        "d_feat": 20,
+        "hidden_size": 64,
+        "num_layers": 2,
+        "dropout": 0.7,
+        "n_epochs": 200,
+        "lr": 0.0001,
+        "early_stop": 10,
+        "metric": "loss",
+        "loss": "mse",
+        "base_model": "LSTM",
+        "model_path": "benchmarks/LSTM/csi300_lstm_ts.pkl",
+        "GPU": 0
+      }
+    }
+  },
+  "params": {
+    "step_len": 20,
+    "dataset_class": "TSDatasetH",
+    "mode": "rank",
+    "topk": null
+  },
+  "action": {
+    "kind": "train",
+    "executor": "executors/qlib_bench",
+    "test_start": "2025-01-01",
+    "test_end": "2026-08-20"
+  },
+  "metrics": [
+    "rankic",
+    "bootstrap",
+    "deciles",
+    "quarters",
+    "hit",
+    "portfolio",
+    "backtest",
+    "attribution"
+  ],
+  "changes": "R3 图时序模型: GATs(A158) 官方参数 + 全市场rank加权组合(mode=rank), 对照 qb_gats_a158 topk50(excess -4.1%)与 post-hoc rank_full(+0.63%)",
+  "timeout_min": 120,
+  "runner": "spark"
+}

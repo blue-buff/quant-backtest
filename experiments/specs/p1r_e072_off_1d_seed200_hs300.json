@@ -1,0 +1,9 @@
+{
+  "exp_id": "p1r_e072_off_1d_seed200_hs300",
+  "base": {"note": "pipeline first real-experiment replay"},
+  "overrides": {},
+  "changes": "管线首跑真实实验：2026-08-22 重跑 e072_off_1d_seed200_hs300（git e4f93d6，186s），留痕复制为 p1r_ 前缀走 log_legacy 入账；模型配置与原实验一致，数字不改",
+  "action": {"kind": "log_legacy", "meta_file": "docs/evidence/exps/p1r_e072_off_1d_seed200_hs300.json"},
+  "runner": "local",
+  "timeout_min": 10
+}

@@ -1,0 +1,9 @@
+{
+  "batch_id": "b-kronos-smoke",
+  "specs": ["experiments/specs/kronos_smoke.json"],
+  "concurrency": 1,
+  "runner_policy": "local",
+  "timeout_min": 30,
+  "note": "Kronos executor deployment smoke (zero-shot OHLCV foundation model, CPU local)"
+}
+

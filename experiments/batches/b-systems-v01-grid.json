@@ -1,0 +1,19 @@
+{
+  "batch_id": "b-systems-v01-grid",
+  "note": "First systems v0.1 grid: 4 topK x daily/weekly/monthly at a 10% position buffer. Run only after user time approval; board multiplicity is authoritative.",
+  "timeout_min": 90,
+  "specs": [
+    "experiments/specs/systems_v01_k30_buf10_d.json",
+    "experiments/specs/systems_v01_k30_buf10_w.json",
+    "experiments/specs/systems_v01_k30_buf10_m.json",
+    "experiments/specs/systems_v01_k50_buf10_d.json",
+    "experiments/specs/systems_v01_k50_buf10_w.json",
+    "experiments/specs/systems_v01_k50_buf10_m.json",
+    "experiments/specs/systems_v01_k70_buf10_d.json",
+    "experiments/specs/systems_v01_k70_buf10_w.json",
+    "experiments/specs/systems_v01_k70_buf10_m.json",
+    "experiments/specs/systems_v01_k100_buf10_d.json",
+    "experiments/specs/systems_v01_k100_buf10_w.json",
+    "experiments/specs/systems_v01_k100_buf10_m.json"
+  ]
+}

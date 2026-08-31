@@ -1,0 +1,12 @@
+{
+ "exp_id": "p8_torch_hs300_10d",
+ "base": "ref:all10d_ens3",
+ "overrides": {"universe": "hs300", "seeds": [42],
+               "dataset": {"handler": {"instruments": "csi300"}}},
+ "params": {"hidden": 64, "epochs": 10, "lr": 0.001, "patience": 3},
+ "action": {"kind": "train", "executor": "executors/_torch_mlp",
+            "test_start": "2025-01-01", "test_end": "2026-08-20"},
+ "changes": "P8 6.2/GPU: 带 requirements.txt 的执行器（torch 2.10 cu128 aarch64）在 spark 容器冒烟 + 首个 GPU 训练任务（GB10 sm_120）",
+ "timeout_min": 60,
+ "runner": "spark"
+}

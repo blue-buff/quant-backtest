@@ -1,0 +1,50 @@
+{
+  "exp_id": "kronos_smoke",
+  "base": {
+    "universe": "hs300",
+    "label": {"horizon": 1},
+    "dataset": {
+      "handler": {
+        "class": "Alpha158",
+        "fit_start_time": "2021-06-01",
+        "fit_end_time": "2024-06-30"
+      }
+    }
+  },
+  "overrides": {
+    "dataset": {
+      "handler": {
+        "instruments": [
+          "SH600000", "SH600009", "SH600010", "SH600011", "SH600015",
+          "SH600016", "SH600018", "SH600019", "SH600023", "SH600025",
+          "SH600028", "SH600029", "SH600030", "SH600031", "SH600036",
+          "SH600039", "SH600048", "SH600050", "SH600061", "SH600085",
+          "SH600089", "SH600104", "SH600111", "SH600115", "SH600132",
+          "SH600150", "SH600176", "SH600183", "SH600188", "SH600196"
+        ]
+      }
+    }
+  },
+  "action": {
+    "kind": "train",
+    "executor": "executors/kronos",
+    "test_start": "2025-01-01",
+    "test_end": "2025-02-14"
+  },
+  "params": {
+    "lookback": 120,
+    "max_context": 512,
+    "min_history": 60,
+    "temperature": 1.0,
+    "top_p": 0.9,
+    "sample_count": 1,
+    "seed": 42,
+    "torch_threads": 4,
+    "max_dates": 0
+  },
+  "metrics": ["rankic", "bootstrap", "deciles", "hit"],
+  "runner": "local",
+  "timeout_min": 30,
+  "changes": "Kronos 零样本部署 smoke: executors/kronos + data/extra/kronos_ohlcv(hfq OHLCV) 旁路特征; 30 只 hs300 成分, lookback 120, test 2025-01-01..2025-02-14; 验证执行器/契约/固定测试器链路, exploratory 无 expectation"
+}
+

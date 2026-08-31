@@ -1,0 +1,16 @@
+{
+ "exp_id": "p2r_all10d_ens3",
+ "base": "ref:all10d_ens3",
+ "overrides": {},
+ "action": {
+  "kind": "train",
+  "test_start": "2025-01-01",
+  "test_end": "2026-08-20"
+ },
+ "changes": "P0-4 参考基线复跑：全市场 Alpha158 + 10d + 官方参数 + 3种子 rank_mean 集成，走 pipeline.trainer; timeout 120->240 (全市场切片fetch+3种子, 安全余量)",
+ "expectation": {
+  "rankic_mean_min": 0.05,
+  "p_le0_max": 0.05
+ },
+ "timeout_min": 240
+}

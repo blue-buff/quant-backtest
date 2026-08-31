@@ -1,0 +1,8 @@
+{
+ "exp_id": "p8_smoke_spark",
+ "base": {},
+ "action": {"kind": "smoke"},
+ "changes": "P8: smoke kind 走 spark compute-only 链（远程算、本地记账，覆盖 smoke 任务种类）",
+ "timeout_min": 15,
+ "runner": "spark"
+}

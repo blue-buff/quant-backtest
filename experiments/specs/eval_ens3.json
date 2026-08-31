@@ -1,0 +1,9 @@
+{
+  "exp_id": "eval_all10d_ens3_all",
+  "base": {"note": "backfill via queue base"},
+  "overrides": {},
+  "changes": "全市场集成评估 JSON 入账（走队列烟雾路径，不重算）",
+  "action": {"kind": "eval_existing", "eval_file": "results/eval/all10d_ens3_all.json"},
+  "runner": "local",
+  "timeout_min": 5
+}

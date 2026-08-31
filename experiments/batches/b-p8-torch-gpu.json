@@ -1,0 +1,7 @@
+{
+ "batch_id": "b-p8-torch-gpu",
+ "timeout_min": 60,
+ "specs": [
+  "experiments/specs/p8_torch_gpu_hs300_10d.json"
+ ]
+}

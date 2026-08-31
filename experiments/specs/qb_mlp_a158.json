@@ -1,0 +1,95 @@
+{
+  "exp_id": "qb_mlp_a158",
+  "base": "ref:qb_off",
+  "overrides": {
+    "dataset": {
+      "handler": {
+        "class": "Alpha158"
+      }
+    },
+    "processors": {
+      "learn": [
+        {
+          "class": "DropCol",
+          "kwargs": {
+            "col_list": [
+              "VWAP0"
+            ]
+          }
+        },
+        {
+          "class": "DropnaProcessor",
+          "kwargs": {
+            "fields_group": "feature"
+          }
+        },
+        {
+          "class": "DropnaLabel"
+        },
+        {
+          "class": "CSZScoreNorm",
+          "kwargs": {
+            "fields_group": "label"
+          }
+        }
+      ],
+      "infer": [
+        {
+          "class": "DropCol",
+          "kwargs": {
+            "col_list": [
+              "VWAP0"
+            ]
+          }
+        },
+        {
+          "class": "CSZFillna",
+          "kwargs": {
+            "fields_group": "feature"
+          }
+        }
+      ],
+      "process_type": "independent"
+    },
+    "model": {
+      "class": "DNNModelPytorch",
+      "module_path": "qlib.contrib.model.pytorch_nn",
+      "kwargs": {
+        "loss": "mse",
+        "lr": 0.002,
+        "optimizer": "adam",
+        "max_steps": 8000,
+        "batch_size": 8192,
+        "GPU": 0,
+        "weight_decay": 0.0002,
+        "pt_model_kwargs": {
+          "input_dim": 157
+        }
+      }
+    }
+  },
+  "params": {
+    "dataset_class": "DatasetH",
+    "topk": 50,
+    "n_drop": 5
+  },
+  "action": {
+    "kind": "train",
+    "executor": "executors/qlib_bench",
+    "test_start": "2025-01-01",
+    "test_end": "2026-08-20"
+  },
+  "metrics": [
+    "rankic",
+    "bootstrap",
+    "deciles",
+    "quarters",
+    "hit",
+    "portfolio",
+    "backtest",
+    "attribution"
+  ],
+  "changes": "官方 qlib benchmark 复现: DNNModelPytorch/Alpha158 官方参数, 只改时间窗 (train 2021-06~2024-06 / valid 2024-07~2024-12 / test 2025-01~2026-08), hs300, 官方 1d label, 统一固定测试器口径",
+  "timeout_min": 60,
+  "runner": "spark"
+}

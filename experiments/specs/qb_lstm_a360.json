@@ -1,0 +1,80 @@
+{
+  "exp_id": "qb_lstm_a360",
+  "base": "ref:qb_off",
+  "overrides": {
+    "dataset": {
+      "handler": {
+        "class": "Alpha360"
+      }
+    },
+    "processors": {
+      "learn": [
+        {
+          "class": "DropnaLabel"
+        },
+        {
+          "class": "CSRankNorm",
+          "kwargs": {
+            "fields_group": "label"
+          }
+        }
+      ],
+      "infer": [
+        {
+          "class": "RobustZScoreNorm",
+          "kwargs": {
+            "fields_group": "feature",
+            "clip_outlier": true
+          }
+        },
+        {
+          "class": "Fillna",
+          "kwargs": {
+            "fields_group": "feature"
+          }
+        }
+      ]
+    },
+    "model": {
+      "class": "LSTM",
+      "module_path": "qlib.contrib.model.pytorch_lstm",
+      "kwargs": {
+        "d_feat": 6,
+        "hidden_size": 64,
+        "num_layers": 2,
+        "dropout": 0.0,
+        "n_epochs": 200,
+        "lr": 0.001,
+        "early_stop": 20,
+        "batch_size": 800,
+        "metric": "loss",
+        "loss": "mse",
+        "GPU": 0
+      }
+    }
+  },
+  "params": {
+    "dataset_class": "DatasetH",
+    "topk": 50,
+    "n_drop": 5
+  },
+  "action": {
+    "kind": "train",
+    "executor": "executors/qlib_bench",
+    "test_start": "2025-01-01",
+    "test_end": "2026-08-20"
+  },
+  "metrics": [
+    "rankic",
+    "bootstrap",
+    "deciles",
+    "quarters",
+    "hit",
+    "portfolio",
+    "backtest",
+    "attribution"
+  ],
+  "changes": "官方 qlib benchmark 复现: LSTM/Alpha360 官方参数, 只改时间窗 (train 2021-06~2024-06 / valid 2024-07~2024-12 / test 2025-01~2026-08), hs300, 官方 1d label, 统一固定测试器口径",
+  "timeout_min": 90,
+  "runner": "spark"
+}

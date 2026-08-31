@@ -1,0 +1,14 @@
+{
+  "exp_id": "systems_v01_smoke_1m",
+  "base": "ref:all10d_ens3",
+  "params": {"top_k": 50, "invest_frac": 0.95, "buffer": 0.10,
+             "rebalance": "weekly", "mode": "strategy", "max_weight": 0.10,
+             "warmup_days": 2},
+  "action": {"kind": "train", "executor": "executors/systems_topk",
+             "test_start": "2025-01-01", "test_end": "2025-01-31",
+             "rounds": 30, "early_stopping": 5, "num_threads": 8},
+  "metrics": ["rankic", "bootstrap", "portfolio", "backtest", "attribution"],
+  "changes": "End-to-end acceptance run for systems_topk v0.1: one month out-of-sample, expanded price cache, execution-lag/open check",
+  "expectation": {"turnover_max": 2.0},
+  "runner": "local", "timeout_min": 45
+}

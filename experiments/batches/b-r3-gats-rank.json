@@ -1,0 +1,7 @@
+{
+  "batch_id": "b-r3-gats-rank",
+  "timeout_min": 120,
+  "specs": [
+    "experiments/specs/r3_gats_rank_hs300.json"
+  ]
+}

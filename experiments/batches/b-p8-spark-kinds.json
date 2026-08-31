@@ -1,0 +1,8 @@
+{
+ "batch_id": "b-p8-spark-kinds",
+ "timeout_min": 60,
+ "specs": [
+  "experiments/specs/p8_smoke_spark.json",
+  "experiments/specs/p8_torch_hs300_10d.json"
+ ]
+}

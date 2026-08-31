@@ -1,0 +1,9 @@
+{
+  "exp_id": "smoke_002",
+  "base": {"note": "server-mode write test base"},
+  "overrides": {},
+  "changes": "服务模式写入一致性测试（非研究）",
+  "action": {"kind": "smoke"},
+  "runner": "local",
+  "timeout_min": 5
+}

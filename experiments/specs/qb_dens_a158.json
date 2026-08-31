@@ -1,0 +1,87 @@
+{
+  "exp_id": "qb_dens_a158",
+  "base": "ref:qb_off",
+  "overrides": {
+    "dataset": {
+      "handler": {
+        "class": "Alpha158"
+      }
+    },
+    "processors": {
+      "learn": [
+        {
+          "class": "DropnaLabel"
+        },
+        {
+          "class": "CSZScoreNorm",
+          "kwargs": {
+            "fields_group": "label"
+          }
+        }
+      ],
+      "infer": []
+    },
+    "model": {
+      "class": "DEnsembleModel",
+      "module_path": "qlib.contrib.model.double_ensemble",
+      "kwargs": {
+        "base_model": "gbm",
+        "loss": "mse",
+        "num_models": 3,
+        "enable_sr": true,
+        "enable_fs": true,
+        "alpha1": 1,
+        "alpha2": 1,
+        "bins_sr": 10,
+        "bins_fs": 5,
+        "decay": 0.5,
+        "sample_ratios": [
+          0.8,
+          0.7,
+          0.6,
+          0.5,
+          0.4
+        ],
+        "sub_weights": [
+          1,
+          1,
+          1
+        ],
+        "epochs": 28,
+        "colsample_bytree": 0.8879,
+        "learning_rate": 0.2,
+        "subsample": 0.8789,
+        "lambda_l1": 205.6999,
+        "lambda_l2": 580.9768,
+        "max_depth": 8,
+        "num_leaves": 210,
+        "num_threads": 20,
+        "verbosity": -1
+      }
+    }
+  },
+  "params": {
+    "dataset_class": "DatasetH",
+    "topk": 50,
+    "n_drop": 5
+  },
+  "action": {
+    "kind": "train",
+    "executor": "executors/qlib_bench",
+    "test_start": "2025-01-01",
+    "test_end": "2026-08-20"
+  },
+  "metrics": [
+    "rankic",
+    "bootstrap",
+    "deciles",
+    "quarters",
+    "hit",
+    "portfolio",
+    "backtest",
+    "attribution"
+  ],
+  "changes": "官方 qlib benchmark 复现: DEnsembleModel/Alpha158 官方参数, 只改时间窗 (train 2021-06~2024-06 / valid 2024-07~2024-12 / test 2025-01~2026-08), hs300, 官方 1d label, 统一固定测试器口径",
+  "timeout_min": 120,
+  "runner": "spark"
+}

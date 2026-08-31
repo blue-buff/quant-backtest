@@ -1,0 +1,9 @@
+{
+  "batch_id": "b-dedupe-001",
+  "specs": ["experiments/specs/eval_ens3b.json"],
+  "concurrency": 1,
+  "runner_policy": "auto",
+  "timeout_min": 10,
+  "review": "auto",
+  "note": "harness 级去重验证"
+}

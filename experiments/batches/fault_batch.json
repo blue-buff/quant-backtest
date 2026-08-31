@@ -1,0 +1,12 @@
+{
+  "batch_id": "b-fault-001",
+  "specs": [
+    "experiments/specs/fail_001.json",
+    "experiments/specs/hang_001.json"
+  ],
+  "concurrency": 1,
+  "runner_policy": "auto",
+  "timeout_min": 10,
+  "review": "auto",
+  "note": "故障链路烟雾测试：确定性崩溃 + 超时杀进程组（不跑训练）"
+}

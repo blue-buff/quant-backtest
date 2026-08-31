@@ -1,0 +1,8 @@
+{
+  "batch_id": "b-local-smoke",
+  "timeout_min": 90,
+  "specs": [
+    "experiments/specs/local_smoke_hs300.json",
+    "experiments/specs/local_train_hs300.json"
+  ]
+}

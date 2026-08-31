@@ -1,0 +1,12 @@
+{
+ "exp_id": "p7_freeze_zz500_10d",
+ "base": "ref:all10d_ens3",
+ "overrides": {"universe": "zz500", "seeds": [42],
+               "dataset": {"handler": {"instruments": "csi500"}}},
+ "params": {"probe": "P7-freeze", "note": "params passthrough 验收"},
+ "action": {"kind": "train", "test_start": "2025-01-01", "test_end": "2026-08-20"},
+ "changes": "P7 冻结验收：zz500 单种子端到端回归（跑 spark 真实远程链）；验证 params 透传/新 board 列/auto review/auto claim/完成通知",
+ "expectation": {"rankic_mean_min": 0.01, "p_le0_max": 0.2},
+ "timeout_min": 45,
+ "runner": "spark"
+}

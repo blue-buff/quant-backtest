@@ -1,0 +1,9 @@
+{
+  "batch_id": "b-pipeline-first",
+  "specs": ["experiments/specs/p1r_e072_off_1d_seed200_hs300.json"],
+  "concurrency": 1,
+  "runner_policy": "auto",
+  "timeout_min": 10,
+  "review": "auto",
+  "note": "管线首跑：真实 qlib 实验重放入账"
+}

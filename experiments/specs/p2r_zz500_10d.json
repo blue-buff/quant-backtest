@@ -1,0 +1,26 @@
+{
+ "exp_id": "p2r_zz500_10d",
+ "base": "ref:all10d_ens3",
+ "overrides": {
+  "universe": "zz500",
+  "seeds": [
+   42
+  ],
+  "dataset": {
+   "handler": {
+    "instruments": "csi500"
+   }
+  }
+ },
+ "action": {
+  "kind": "train",
+  "test_start": "2025-01-01",
+  "test_end": "2026-08-20"
+ },
+ "changes": "P0-4 管线真实训练冒烟：zz500 池 + 10d 标签 + 单种子（首个走 pipeline.trainer 的训练）",
+ "expectation": {
+  "rankic_mean_min": 0.01,
+  "p_le0_max": 0.2
+ },
+ "timeout_min": 30
+}

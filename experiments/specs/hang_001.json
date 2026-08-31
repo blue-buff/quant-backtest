@@ -1,0 +1,9 @@
+{
+  "exp_id": "hang_001",
+  "base": {"note": "timeout-path test base"},
+  "overrides": {},
+  "changes": "故意挂起：测试超时杀进程组（非研究）",
+  "action": {"kind": "hang", "seconds": 300},
+  "runner": "local",
+  "timeout_min": 5
+}

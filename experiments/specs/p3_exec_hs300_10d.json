@@ -1,0 +1,24 @@
+{
+ "exp_id": "p3_exec_hs300_10d",
+ "base": "ref:all10d_ens3",
+ "overrides": {
+  "universe": "hs300",
+  "seeds": [42],
+  "dataset": {
+   "handler": {
+    "instruments": "csi300"
+   }
+  }
+ },
+ "action": {
+  "kind": "train",
+  "test_start": "2025-01-01",
+  "test_end": "2026-08-20"
+ },
+ "changes": "P5 执行器契约初版冒烟：hs300 池 + 默认示例执行器 executors/_example_lgb，走 取数(固定菜单)→执行器→契约检查→固定测试器→台账 全链路",
+ "expectation": {
+  "rankic_mean_min": 0.0,
+  "p_le0_max": 0.5
+ },
+ "timeout_min": 45
+}

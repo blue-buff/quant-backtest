@@ -1,0 +1,9 @@
+{
+  "exp_id": "smoke_001",
+  "base": {"note": "wiring test base"},
+  "overrides": {},
+  "changes": "队列-台账连通性烟雾测试，非研究结果",
+  "action": {"kind": "smoke"},
+  "runner": "local",
+  "timeout_min": 5
+}

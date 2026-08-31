@@ -1,0 +1,1 @@
+{"exp_id":"t_spark_smoke2","base":{},"runner":"spark","action":{"kind":"smoke"},"timeout_min":30}

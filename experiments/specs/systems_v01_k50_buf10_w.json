@@ -1,0 +1,14 @@
+{
+  "exp_id": "systems_v01_k50_buf10_w",
+  "base": "ref:all10d_ens3",
+  "params": {"top_k": 50, "invest_frac": 0.95, "buffer": 0.10,
+             "rebalance": "weekly", "mode": "strategy", "max_weight": 0.10,
+             "warmup_days": 2},
+  "action": {"kind": "train", "executor": "executors/systems_topk",
+             "test_start": "2025-01-01", "test_end": "2026-08-20"},
+  "metrics": ["rankic", "bootstrap", "portfolio", "backtest", "attribution"],
+  "changes": "D1 systems v0.1 parameter platform: top_k=50, position buffer=10%, weekly rebalance",
+  "expectation": {"rankic_mean_min": 0.03, "p_le0_max": 0.1,
+                  "turnover_max": 1.0},
+  "runner": "local", "timeout_min": 90
+}

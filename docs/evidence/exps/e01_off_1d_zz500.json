@@ -1,0 +1,44 @@
+{
+  "name": "e01_off_1d_zz500",
+  "pool": "zz500",
+  "ts": "2026-08-20T12:42:35",
+  "git": "53bf0f2",
+  "yaml": "qlib_examples/experiments/e01_off_1d_zz500.yaml",
+  "ok": true,
+  "label": "default(1d)",
+  "model_kwargs": {
+    "loss": "mse",
+    "colsample_bytree": 0.8879,
+    "learning_rate": 0.2,
+    "subsample": 0.8789,
+    "lambda_l1": 205.6999,
+    "lambda_l2": 580.9768,
+    "max_depth": 8,
+    "num_leaves": 210,
+    "num_threads": 20
+  },
+  "segments": {
+    "train": [
+      "2022-01-01",
+      "2024-06-30"
+    ],
+    "valid": [
+      "2024-07-01",
+      "2024-12-31"
+    ],
+    "test": [
+      "2025-01-01",
+      "2026-08-14"
+    ]
+  },
+  "train_l2": 0.9700923195956553,
+  "valid_l2": 1.0015273195571517,
+  "IC": -0.005455895860735645,
+  "ICIR": -0.04022733239332037,
+  "rank_IC": 0.013667542709303078,
+  "rank_ICIR": 0.10186546863246297,
+  "run_id": "1e6fb4dd3c7c4c2e9b6b9033cf3bad6a",
+  "seconds": 137.4,
+  "pred_path": "qlib_examples/mlruns/429737427097836721/1e6fb4dd3c7c4c2e9b6b9033cf3bad6a/artifacts/pred.pkl",
+  "label_pkl": "qlib_examples/mlruns/429737427097836721/1e6fb4dd3c7c4c2e9b6b9033cf3bad6a/artifacts/label.pkl"
+}

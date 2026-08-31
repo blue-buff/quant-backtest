@@ -1,0 +1,9 @@
+{
+ "exp_id": "t_heal_hang",
+ "base": {},
+ "action": {
+  "kind": "hang",
+  "seconds": 60
+ },
+ "timeout_min": 5
+}

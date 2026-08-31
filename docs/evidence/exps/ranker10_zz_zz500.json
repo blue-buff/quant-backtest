@@ -1,0 +1,26 @@
+{
+  "name": "ranker10_zz_zz500",
+  "pool": "zz500",
+  "label_days": 10,
+  "ndcg": 50,
+  "num_leaves": 128,
+  "lr": 0.05,
+  "rounds": 800,
+  "best_iter": 7,
+  "valid_ndcg": {
+    "ndcg@50": 0.19394547176187868
+  },
+  "train_shape": [
+    283479,
+    159
+  ],
+  "valid_shape": [
+    60818,
+    159
+  ],
+  "test_shape": [
+    189027,
+    159
+  ],
+  "ts": "2026-08-20T13:22:45"
+}

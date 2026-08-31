@@ -1,0 +1,12 @@
+{
+  "batch_id": "b-server-smoke-001",
+  "specs": [
+    "experiments/specs/smoke_002.json",
+    "experiments/specs/eval_ens3.json"
+  ],
+  "concurrency": 1,
+  "runner_policy": "auto",
+  "timeout_min": 10,
+  "review": "auto",
+  "note": "服务模式写入一致性 + 去重验证（eval_ens3 应 reuse 而非新建）"
+}

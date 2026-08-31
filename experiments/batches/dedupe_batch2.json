@@ -1,0 +1,9 @@
+{
+  "batch_id": "b-dedupe-002",
+  "specs": ["experiments/specs/eval_ens3c.json"],
+  "concurrency": 1,
+  "runner_policy": "auto",
+  "timeout_min": 10,
+  "review": "auto",
+  "note": "harness 级去重复测（工件名匹配）"
+}

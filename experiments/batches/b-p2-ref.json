@@ -1,0 +1,7 @@
+{
+ "batch_id": "b-p2-ref",
+ "timeout_min": 120,
+ "specs": [
+  "experiments/specs/p2r_all10d_ens3.json"
+ ]
+}

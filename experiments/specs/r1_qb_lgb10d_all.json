@@ -1,0 +1,32 @@
+{
+  "exp_id": "r1_qb_lgb10d_all",
+  "base": "ref:qb_off",
+  "overrides": {
+    "universe": "all",
+    "dataset": {"handler": {"instruments": "all"}},
+    "label": {"horizon": 10, "formula": "Ref($close,-11)/Ref($close,-1)-1", "shift": -11},
+    "model": {
+      "class": "LGBModel",
+      "module_path": "qlib.contrib.model.gbdt",
+      "kwargs": {
+        "loss": "mse",
+        "colsample_bytree": 0.8879,
+        "learning_rate": 0.2,
+        "subsample": 0.8789,
+        "lambda_l1": 205.6999,
+        "lambda_l2": 580.9768,
+        "max_depth": 8,
+        "num_leaves": 210,
+        "num_threads": 20
+      }
+    }
+  },
+  "params": {"dataset_class": "DatasetH", "topk": 50, "n_drop": 5},
+  "action": {"kind": "train", "executor": "executors/qlib_bench",
+             "test_start": "2025-01-01", "test_end": "2026-08-20"},
+  "metrics": ["rankic", "bootstrap", "deciles", "quarters", "hit", "portfolio", "backtest", "attribution"],
+  "changes": "R1 全市场: qlib LGBModel(官方,同qb_lgb_a158) + all + 10d标签, 定位 _example_topk_portfolio 弱化(0.0313)是否执行器问题",
+  "expectation": {"rankic_mean_min": 0.05, "p_le0_max": 0.05},
+  "timeout_min": 240,
+  "runner": "spark"
+}

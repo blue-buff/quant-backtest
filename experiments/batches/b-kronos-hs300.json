@@ -1,0 +1,9 @@
+{
+  "batch_id": "b-kronos-hs300",
+  "specs": ["experiments/specs/kronos_hs300_30d.json"],
+  "concurrency": 1,
+  "runner_policy": "spark",
+  "timeout_min": 300,
+  "note": "Kronos hs300 full-pool deployment test (CPU ~7min/day x 30 days)"
+}
+

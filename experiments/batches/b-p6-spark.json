@@ -1,0 +1,7 @@
+{
+ "batch_id": "b-p6-spark",
+ "timeout_min": 45,
+ "specs": [
+  "experiments/specs/p6_spark_hs300_10d.json"
+ ]
+}

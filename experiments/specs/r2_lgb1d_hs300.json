@@ -1,0 +1,18 @@
+{
+  "exp_id": "r2_lgb1d_hs300",
+  "base": "ref:all10d_ens3",
+  "overrides": {
+    "universe": "hs300",
+    "dataset": {"handler": {"instruments": "csi300"}},
+    "label": {"horizon": 1, "formula": "Ref($close,-2)/Ref($close,-1)-1", "shift": -2}
+  },
+  "params": {"top_k": 50, "invest_frac": 0.95, "buffer": 0.005},
+  "action": {"kind": "train", "executor": "executors/_example_topk_portfolio",
+             "test_start": "2025-01-01", "test_end": "2026-08-20",
+             "num_threads": 2},
+  "metrics": ["rankic", "bootstrap", "portfolio", "backtest", "attribution"],
+  "changes": "R2 GBDT交易: hs300 + 1d标签 + 3种子LGBM rank_mean + topk50等权, 对照qb_lgb_a158(1d单种子 excess+3.86%)与qb_dens(+5.0%)",
+  "expectation": {"rankic_mean_min": 0.02, "p_le0_max": 0.05},
+  "timeout_min": 90,
+  "runner": "local"
+}

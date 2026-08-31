@@ -1,0 +1,39 @@
+{
+  "ref_id": "qb_off",
+  "note": "官方 qlib benchmark 复现口径 (2026-08-24): Alpha158/Alpha360 + 官方 label Ref($close,-2)/Ref($close,-1)-1 + hs300 池。统一切分: train 2021-06-01~2024-06-30 / valid 2024-07-01~2024-12-31 / test 2025-01-01~2026-08-20。官方模型参数只改时间窗，不做任何调参。",
+  "universe": "hs300",
+  "data_version": "v3",
+  "dataset": {
+    "class": "DatasetH",
+    "handler": {
+      "class": "Alpha158",
+      "fit_start_time": "2021-06-01",
+      "fit_end_time": "2024-06-30",
+      "instruments": "csi300"
+    }
+  },
+  "label": {
+    "ref": "$close",
+    "shift": -2,
+    "horizon": 1,
+    "formula": "Ref($close,-2)/Ref($close,-1)-1"
+  },
+  "processors": {
+    "learn": [
+      {
+        "class": "DropnaLabel"
+      },
+      {
+        "class": "CSZScoreNorm",
+        "kwargs": {
+          "fields_group": "label"
+        }
+      }
+    ],
+    "infer": []
+  },
+  "seeds": [
+    0
+  ],
+  "ensemble": "none"
+}
